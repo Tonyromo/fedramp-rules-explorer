@@ -1,0 +1,20 @@
+.native-relationship-viewer { width: 100%; }
+.native-relationship-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.native-relationship-toolbar p { margin: 0; color: #657782; font-size: .85rem; }
+.native-relationship-toolbar button { padding: 9px 13px; border: 1px solid #c9d6dd; border-radius: 8px; background: #fff; color: #244a61; font-weight: 750; cursor: pointer; }
+.native-relationship-viewer svg { width: 100%; height: 620px; border: 1px solid #dce3e7; border-radius: 12px; background: #fbfcfd; user-select: none; }
+.native-edge { stroke: #b9c6ce; stroke-width: 1.5; }
+.native-node { cursor: pointer; outline: none; }
+.native-node circle { fill: #fff; stroke-width: 3; }
+.native-node text { fill: #263945; font-size: 13px; font-weight: 800; pointer-events: none; text-transform: none; }
+.native-node.node-control circle { fill: #1769aa; stroke: #0f4e80; }
+.native-node.node-control text { fill: #fff; font-size: 18px; }
+.native-node.node-rule circle { fill: #f4fbf5; stroke: #2f8f46; }
+.native-node.node-indicator circle { fill: #faf7fd; stroke: #7a4db5; }
+.native-node.node-process circle { fill: #f2fbfc; stroke: #168b9d; }
+.native-node:hover circle, .native-node:focus-visible circle { stroke-width: 5; filter: drop-shadow(0 3px 5px rgba(24, 45, 58, .18)); }
+.native-node-subtitle { fill: #dbefff !important; font-size: 10px !important; text-transform: capitalize !important; }
+@media (max-width: 800px) {
+  .native-relationship-toolbar { align-items: flex-start; flex-direction: column; }
+  .native-relationship-viewer svg { height: 480px; }
+}
