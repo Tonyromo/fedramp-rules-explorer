@@ -63,7 +63,22 @@ function readControlDetail(detail: HTMLElement) {
     y: 0,
   }))
 
-  return { heading, rules, indicators, processes }
+  return { heading, rules, indicators, processes, ruleSection }
+}
+
+function makeReferencedRulesTable(ruleSection: HTMLElement) {
+  const list = ruleSection.querySelector<HTMLElement>('.relationship-list')
+  if (!list || list.classList.contains('relationship-table')) return
+
+  list.classList.add('relationship-table')
+  const header = document.createElement('div')
+  header.className = 'relationship-table-header'
+  header.innerHTML = '<span>Rule</span><span>Statement</span><span>Process / force</span>'
+  list.prepend(header)
+
+  Array.from(list.querySelectorAll<HTMLElement>(':scope > button')).forEach((row) => {
+    row.classList.add('relationship-table-row')
+  })
 }
 
 function renderGraph(detail: HTMLElement) {
@@ -71,6 +86,8 @@ function renderGraph(detail: HTMLElement) {
   const relationship = readControlDetail(detail)
   if (!relationship) return
   detail.setAttribute(GRAPH_MARKER, 'true')
+
+  makeReferencedRulesTable(relationship.ruleSection)
 
   const graphSection = document.createElement('section')
   graphSection.className = 'detail-section spider-graph-section'
@@ -88,8 +105,7 @@ function renderGraph(detail: HTMLElement) {
     <div class="spider-graph-viewport"></div>
   `
 
-  const summary = detail.querySelector('.relationship-summary')
-  summary?.insertAdjacentElement('afterend', graphSection)
+  relationship.ruleSection.insertAdjacentElement('beforebegin', graphSection)
 
   const viewport = graphSection.querySelector<HTMLElement>('.spider-graph-viewport')!
   const svg = svgElement('svg', { viewBox: '0 0 1100 700', role: 'img', 'aria-label': `Relationship graph for ${relationship.heading}` })
@@ -140,11 +156,16 @@ function renderGraph(detail: HTMLElement) {
   let startY = 0
 
   const applyTransform = () => scene.setAttribute('transform', `translate(${translateX} ${translateY}) scale(${scale})`)
-  const fit = () => { scale = 1; translateX = 0; translateY = 0; applyTransform() }
+  const centerOnControl = () => {
+    translateX = center.x * (1 - scale)
+    translateY = center.y * (1 - scale)
+  }
+  const fit = () => { scale = 1; centerOnControl(); applyTransform() }
 
   svg.addEventListener('wheel', (event) => {
     event.preventDefault()
     scale = Math.min(2.5, Math.max(0.55, scale * (event.deltaY < 0 ? 1.1 : 0.9)))
+    centerOnControl()
     applyTransform()
   }, { passive: false })
   svg.addEventListener('pointerdown', (event) => { dragging = true; startX = event.clientX - translateX; startY = event.clientY - translateY; svg.setPointerCapture(event.pointerId) })
