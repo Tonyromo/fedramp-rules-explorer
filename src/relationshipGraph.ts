@@ -89,8 +89,26 @@ function renderGraph(detail: HTMLElement) {
 
   makeReferencedRulesTable(relationship.ruleSection)
 
-  const graphSection = document.createElement('section')
-  graphSection.className = 'detail-section spider-graph-section'
+  const tabContainer = document.createElement('section')
+  tabContainer.className = 'detail-section relationship-tabs'
+  tabContainer.innerHTML = `
+    <div class="relationship-tabs-nav" role="tablist" aria-label="Control relationships">
+      <button class="relationship-tab active" type="button" role="tab" aria-selected="true" aria-controls="relationship-viewer-panel" id="relationship-viewer-tab">Relationship Viewer</button>
+      <button class="relationship-tab" type="button" role="tab" aria-selected="false" aria-controls="referenced-rules-panel" id="referenced-rules-tab">Referenced Rules</button>
+    </div>
+    <div class="relationship-tab-content">
+      <div class="relationship-tab-panel active" role="tabpanel" id="relationship-viewer-panel" aria-labelledby="relationship-viewer-tab"></div>
+      <div class="relationship-tab-panel" role="tabpanel" id="referenced-rules-panel" aria-labelledby="referenced-rules-tab" hidden></div>
+    </div>
+  `
+
+  relationship.ruleSection.insertAdjacentElement('beforebegin', tabContainer)
+  const graphPanel = tabContainer.querySelector<HTMLElement>('#relationship-viewer-panel')!
+  const rulesPanel = tabContainer.querySelector<HTMLElement>('#referenced-rules-panel')!
+  rulesPanel.append(relationship.ruleSection)
+
+  const graphSection = document.createElement('div')
+  graphSection.className = 'spider-graph-section'
   graphSection.innerHTML = `
     <div class="spider-graph-heading">
       <div><h3>Relationship viewer</h3><p>Drag to pan, scroll to zoom, and select a rule node to open it.</p></div>
@@ -104,8 +122,24 @@ function renderGraph(detail: HTMLElement) {
     </div>
     <div class="spider-graph-viewport"></div>
   `
+  graphPanel.append(graphSection)
 
-  relationship.ruleSection.insertAdjacentElement('beforebegin', graphSection)
+  const tabs = Array.from(tabContainer.querySelectorAll<HTMLButtonElement>('.relationship-tab'))
+  const panels = Array.from(tabContainer.querySelectorAll<HTMLElement>('.relationship-tab-panel'))
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      tabs.forEach((item) => {
+        const active = item === tab
+        item.classList.toggle('active', active)
+        item.setAttribute('aria-selected', String(active))
+      })
+      panels.forEach((panel) => {
+        const active = panel.id === tab.getAttribute('aria-controls')
+        panel.classList.toggle('active', active)
+        panel.hidden = !active
+      })
+    })
+  })
 
   const viewport = graphSection.querySelector<HTMLElement>('.spider-graph-viewport')!
   const svg = svgElement('svg', { viewBox: '0 0 1100 700', role: 'img', 'aria-label': `Relationship graph for ${relationship.heading}` })
