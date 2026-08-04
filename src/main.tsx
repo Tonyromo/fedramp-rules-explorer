@@ -9,6 +9,7 @@ import './spiderGraph.css'
 import './relationshipGraph'
 import App from './App'
 import { installMilestone4Enhancements } from './milestone4'
+import { installIndicatorNavigation } from './indicatorNavigation'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -17,3 +18,4 @@ createRoot(document.getElementById('root')!).render(
 )
 
 installMilestone4Enhancements()
+installIndicatorNavigation()
