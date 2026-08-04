@@ -63,20 +63,22 @@ function readControlDetail(detail: HTMLElement) {
     y: 0,
   }))
 
-  return { heading, rules, indicators, processes, ruleSection }
+  return { heading, rules, indicators, processes, ruleSection, indicatorSection }
 }
 
-function makeReferencedRulesTable(ruleSection: HTMLElement) {
-  const list = ruleSection.querySelector<HTMLElement>('.relationship-list')
+function makeRelationshipTable(section: HTMLElement, kind: 'rules' | 'indicators') {
+  const list = section.querySelector<HTMLElement>('.relationship-list')
   if (!list || list.classList.contains('relationship-table')) return
 
   list.classList.add('relationship-table')
   const header = document.createElement('div')
   header.className = 'relationship-table-header'
-  header.innerHTML = '<span>Rule</span><span>Statement</span><span>Process / force</span>'
+  header.innerHTML = kind === 'rules'
+    ? '<span>Rule</span><span>Statement</span><span>Process / force</span>'
+    : '<span>Indicator</span><span>Statement</span><span>Theme</span>'
   list.prepend(header)
 
-  Array.from(list.querySelectorAll<HTMLElement>(':scope > button')).forEach((row) => {
+  Array.from(list.querySelectorAll<HTMLElement>(':scope > button, :scope > article')).forEach((row) => {
     row.classList.add('relationship-table-row')
   })
 }
@@ -87,24 +89,31 @@ function renderGraph(detail: HTMLElement) {
   if (!relationship) return
   detail.setAttribute(GRAPH_MARKER, 'true')
 
-  makeReferencedRulesTable(relationship.ruleSection)
+  makeRelationshipTable(relationship.ruleSection, 'rules')
+  makeRelationshipTable(relationship.indicatorSection, 'indicators')
 
   const tabContainer = document.createElement('section')
   tabContainer.className = 'detail-section relationship-tabs'
   tabContainer.innerHTML = `
     <div class="relationship-tabs-nav" role="tablist" aria-label="Control relationships">
-      <button class="relationship-tab active" type="button" role="tab" aria-selected="true" aria-controls="relationship-viewer-panel" id="relationship-viewer-tab">Relationship Viewer</button>
-      <button class="relationship-tab" type="button" role="tab" aria-selected="false" aria-controls="referenced-rules-panel" id="referenced-rules-tab">Referenced Rules</button>
+      <button class="relationship-tab active" type="button" role="tab" aria-selected="true" aria-controls="relationship-viewer-panel">Relationship Viewer</button>
+      <button class="relationship-tab" type="button" role="tab" aria-selected="false" aria-controls="referenced-indicators-panel">Referenced Indicators</button>
+      <button class="relationship-tab" type="button" role="tab" aria-selected="false" aria-controls="referenced-rules-panel">Referenced Rules</button>
     </div>
     <div class="relationship-tab-content">
-      <div class="relationship-tab-panel active" role="tabpanel" id="relationship-viewer-panel" aria-labelledby="relationship-viewer-tab"></div>
-      <div class="relationship-tab-panel" role="tabpanel" id="referenced-rules-panel" aria-labelledby="referenced-rules-tab" hidden></div>
+      <div class="relationship-tab-panel active" role="tabpanel" id="relationship-viewer-panel"></div>
+      <div class="relationship-tab-panel" role="tabpanel" id="referenced-indicators-panel" hidden></div>
+      <div class="relationship-tab-panel" role="tabpanel" id="referenced-rules-panel" hidden></div>
     </div>
   `
 
-  relationship.ruleSection.insertAdjacentElement('beforebegin', tabContainer)
+  const summary = detail.querySelector('.relationship-summary')
+  summary?.insertAdjacentElement('afterend', tabContainer)
+
   const graphPanel = tabContainer.querySelector<HTMLElement>('#relationship-viewer-panel')!
+  const indicatorsPanel = tabContainer.querySelector<HTMLElement>('#referenced-indicators-panel')!
   const rulesPanel = tabContainer.querySelector<HTMLElement>('#referenced-rules-panel')!
+  indicatorsPanel.append(relationship.indicatorSection)
   rulesPanel.append(relationship.ruleSection)
 
   const graphSection = document.createElement('div')
