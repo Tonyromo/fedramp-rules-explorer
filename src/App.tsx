@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import MiniSearch from 'minisearch'
-import { DATA_URL, loadDataset } from './data/load'
+import { DATA_URL, SCHEMA_URL, loadDataset } from './data/load'
+import type { DatasetLoadStatus } from './data/load'
 import type { DefinitionRecord, IndicatorRecord, NormalizedDataset, RuleRecord } from './data/types'
 
 type View = 'overview' | 'definitions' | 'rules' | 'indicators'
@@ -49,12 +50,7 @@ function buildSearchItems(data: NormalizedDataset): SearchItem[] {
 }
 
 function StatCard({ label, value }: { label: string; value: number | string }) {
-  return (
-    <article className="stat-card">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </article>
-  )
+  return <article className="stat-card"><span>{label}</span><strong>{value}</strong></article>
 }
 
 function RecordCard({ item }: { item: SearchItem }) {
@@ -66,15 +62,16 @@ function RecordCard({ item }: { item: SearchItem }) {
       </div>
       <h3>{item.title}</h3>
       <p>{item.body}</p>
-      <div className="record-footer">
-        <span>{item.meta}</span>
-        <code>{item.sourcePath}</code>
-      </div>
+      <div className="record-footer"><span>{item.meta}</span><code>{item.sourcePath}</code></div>
     </article>
   )
 }
 
-function Overview({ data }: { data: NormalizedDataset }) {
+function formatRetrievedAt(value: string) {
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+}
+
+function Overview({ data, status }: { data: NormalizedDataset; status: DatasetLoadStatus }) {
   const processes = new Set(data.rules.map((item) => item.processId)).size
   const themes = new Set(data.indicators.map((item) => item.themeId)).size
   const forceCounts = data.rules.reduce<Record<string, number>>((counts, item) => {
@@ -85,6 +82,7 @@ function Overview({ data }: { data: NormalizedDataset }) {
 
   return (
     <>
+      {status.warning && <section className="source-warning"><strong>Cached data in use.</strong> {status.warning}</section>}
       <section className="hero-panel">
         <div>
           <span className="eyebrow">Dataset overview</span>
@@ -94,7 +92,10 @@ function Overview({ data }: { data: NormalizedDataset }) {
         <dl className="dataset-meta">
           <div><dt>Version</dt><dd>{data.info.version}</dd></div>
           <div><dt>Last updated</dt><dd>{data.info.last_updated}</dd></div>
-          <div><dt>Source</dt><dd><a href={DATA_URL} target="_blank" rel="noreferrer">Official JSON</a></dd></div>
+          <div><dt>Active source</dt><dd>{status.source === 'official' ? 'Official FedRAMP repository' : 'Last validated local cache'}</dd></div>
+          <div><dt>Retrieved</dt><dd>{formatRetrievedAt(status.retrievedAt)}</dd></div>
+          <div><dt>Validation</dt><dd>Passed</dd></div>
+          <div><dt>Official files</dt><dd><a href={DATA_URL} target="_blank" rel="noreferrer">Rules</a> · <a href={SCHEMA_URL} target="_blank" rel="noreferrer">Schema</a></dd></div>
         </dl>
       </section>
 
@@ -107,9 +108,7 @@ function Overview({ data }: { data: NormalizedDataset }) {
       </section>
 
       <section className="panel">
-        <div className="section-heading">
-          <div><span className="eyebrow">Rule language</span><h2>Requirements by force</h2></div>
-        </div>
+        <div className="section-heading"><div><span className="eyebrow">Rule language</span><h2>Requirements by force</h2></div></div>
         <div className="force-grid">
           {Object.entries(forceCounts).sort((a, b) => b[1] - a[1]).map(([force, count]) => (
             <div className="force-row" key={force}><span>{force}</span><strong>{count}</strong></div>
@@ -135,12 +134,16 @@ function filterIndicators(records: IndicatorRecord[], query: string) {
 
 export default function App() {
   const [data, setData] = useState<NormalizedDataset | null>(null)
+  const [status, setStatus] = useState<DatasetLoadStatus | null>(null)
   const [error, setError] = useState('')
   const [view, setView] = useState<View>('overview')
   const [query, setQuery] = useState('')
 
   useEffect(() => {
-    loadDataset().then(setData).catch((cause: unknown) => {
+    loadDataset().then((result) => {
+      setData(result.data)
+      setStatus(result.status)
+    }).catch((cause: unknown) => {
       setError(cause instanceof Error ? cause.message : 'Unable to load the dataset.')
     })
   }, [])
@@ -161,10 +164,8 @@ export default function App() {
     return searchIndex.search(query).slice(0, 50) as unknown as SearchItem[]
   }, [query, searchIndex])
 
-  if (error) {
-    return <main className="state-screen"><h1>FedRAMP Rules Explorer</h1><p>{error}</p><button onClick={() => window.location.reload()}>Try again</button></main>
-  }
-  if (!data) return <main className="state-screen"><div className="loader" /><h1>Loading FedRAMP rules</h1></main>
+  if (error) return <main className="state-screen"><h1>FedRAMP Rules Explorer</h1><p>{error}</p><button onClick={() => window.location.reload()}>Try again</button></main>
+  if (!data || !status) return <main className="state-screen"><div className="loader" /><h1>Loading and validating FedRAMP rules</h1></main>
 
   const localQuery = query.trim()
   const viewItems: SearchItem[] = view === 'definitions'
@@ -179,10 +180,8 @@ export default function App() {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand"><span>FR</span><div><strong>FedRAMP</strong><small>Rules Explorer</small></div></div>
-        <nav>
-          {navigation.map((item) => <button key={item.id} className={view === item.id ? 'active' : ''} onClick={() => setView(item.id)}>{item.label}</button>)}
-        </nav>
-        <div className="sidebar-note"><strong>Public preview</strong><span>Read-only view of the official 2026 consolidated rules.</span></div>
+        <nav>{navigation.map((item) => <button key={item.id} className={view === item.id ? 'active' : ''} onClick={() => setView(item.id)}>{item.label}</button>)}</nav>
+        <div className="sidebar-note"><strong>{status.source === 'official' ? 'Official source active' : 'Cached source active'}</strong><span>Read-only view of the validated 2026 consolidated rules.</span></div>
       </aside>
 
       <main className="main-content">
@@ -196,7 +195,7 @@ export default function App() {
             <div className="section-heading"><div><span className="eyebrow">Global search</span><h2>{globalResults.length} results</h2></div><button className="text-button" onClick={() => setQuery('')}>Clear</button></div>
             <div className="records-list">{globalResults.map((item) => <RecordCard key={`${item.kind}-${item.id}`} item={item} />)}</div>
           </section>
-        ) : view === 'overview' ? <Overview data={data} /> : (
+        ) : view === 'overview' ? <Overview data={data} status={status} /> : (
           <section className="panel">
             <div className="section-heading"><div><span className="eyebrow">Browse</span><h2>{viewItems.length.toLocaleString()} {view}</h2></div></div>
             <div className="records-list">{viewItems.slice(0, 250).map((item) => <RecordCard key={`${item.kind}-${item.id}-${item.sourcePath}`} item={item} />)}</div>
