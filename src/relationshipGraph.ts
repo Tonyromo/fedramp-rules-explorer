@@ -11,6 +11,7 @@ type GraphEdge = { source: GraphNode; target: GraphNode }
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 const GRAPH_MARKER = 'data-spider-graph-ready'
+const INDICATOR_ROW_MARKER = 'data-indicator-navigation-ready'
 
 function svgElement<K extends keyof SVGElementTagNameMap>(name: K, attributes: Record<string, string> = {}) {
   const element = document.createElementNS(SVG_NS, name)
@@ -24,6 +25,35 @@ function distribute(nodes: GraphNode[], centerX: number, centerY: number, radius
     node.x = centerX + Math.cos(angle) * radius
     node.y = centerY + Math.sin(angle) * radius
   })
+}
+
+function findSidebarButton(label: string) {
+  return Array.from(document.querySelectorAll<HTMLButtonElement>('.sidebar nav button'))
+    .find((button) => button.textContent?.trim().startsWith(label))
+}
+
+function findIndicatorCard(indicatorId: string) {
+  return Array.from(document.querySelectorAll<HTMLElement>('.record-card'))
+    .find((card) => card.querySelector('code')?.textContent?.trim() === indicatorId)
+}
+
+function navigateToIndicator(indicatorId: string) {
+  findSidebarButton('Indicators')?.click()
+
+  let attempts = 0
+  const locate = () => {
+    const card = findIndicatorCard(indicatorId)
+    if (card) {
+      document.querySelectorAll('.indicator-navigation-target').forEach((item) => item.classList.remove('indicator-navigation-target'))
+      card.classList.add('indicator-navigation-target')
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      window.setTimeout(() => card.classList.remove('indicator-navigation-target'), 2600)
+      return
+    }
+    attempts += 1
+    if (attempts < 20) window.setTimeout(locate, 50)
+  }
+  window.setTimeout(locate, 0)
 }
 
 function readControlDetail(detail: HTMLElement) {
@@ -51,6 +81,7 @@ function readControlDetail(detail: HTMLElement) {
     id: target.querySelector('code')?.textContent?.trim() ?? 'Indicator',
     label: target.querySelector('code')?.textContent?.trim() ?? 'Indicator',
     kind: 'indicator' as const,
+    target,
     x: 0,
     y: 0,
   }))
@@ -83,6 +114,25 @@ function makeRelationshipTable(section: HTMLElement, kind: 'rules' | 'indicators
   })
 }
 
+function makeIndicatorsInteractive(indicators: GraphNode[]) {
+  indicators.forEach((indicator) => {
+    const row = indicator.target
+    if (!row || row.hasAttribute(INDICATOR_ROW_MARKER)) return
+    row.setAttribute(INDICATOR_ROW_MARKER, 'true')
+    row.setAttribute('role', 'button')
+    row.setAttribute('tabindex', '0')
+    row.setAttribute('aria-label', `Open indicator ${indicator.id}`)
+    const open = () => navigateToIndicator(indicator.id)
+    row.addEventListener('click', open)
+    row.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault()
+        open()
+      }
+    })
+  })
+}
+
 function renderGraph(detail: HTMLElement) {
   if (detail.hasAttribute(GRAPH_MARKER)) return
   const relationship = readControlDetail(detail)
@@ -91,6 +141,7 @@ function renderGraph(detail: HTMLElement) {
 
   makeRelationshipTable(relationship.ruleSection, 'rules')
   makeRelationshipTable(relationship.indicatorSection, 'indicators')
+  makeIndicatorsInteractive(relationship.indicators)
 
   const tabContainer = document.createElement('section')
   tabContainer.className = 'detail-section relationship-tabs'
@@ -124,7 +175,7 @@ function renderGraph(detail: HTMLElement) {
   graphSection.className = 'spider-graph-section'
   graphSection.innerHTML = `
     <div class="spider-graph-heading">
-      <div><h3>Relationship viewer</h3><p>Drag to pan, scroll to zoom, and select a rule node to open it.</p></div>
+      <div><h3>Relationship viewer</h3><p>Drag to pan, scroll to zoom, and select a rule or indicator node to open it.</p></div>
       <div class="spider-graph-actions">
         <button class="secondary-button" type="button" data-action="fit">Fit to view</button>
         <button class="secondary-button" type="button" data-action="toggle">Hide graph</button>
@@ -190,7 +241,12 @@ function renderGraph(detail: HTMLElement) {
       group.classList.add('clickable')
       const open = () => node.target?.click()
       group.addEventListener('click', open)
-      group.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') open() })
+      group.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          open()
+        }
+      })
     }
     scene.append(group)
   })
