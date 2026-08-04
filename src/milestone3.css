@@ -1,0 +1,21 @@
+.action-group { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; }
+.secondary-button { border: 1px solid #b9c8d0; border-radius: 8px; padding: 9px 12px; background: #fff; color: #244a61; font-weight: 750; cursor: pointer; }
+.secondary-button:hover { border-color: #6f9bb3; background: #f5f9fb; }
+.review-heading { align-items: flex-start; }
+.review-list { display: grid; gap: 14px; }
+.review-card { border: 1px solid #d9e1e5; border-radius: 11px; padding: 18px; background: #fff; }
+.review-card-heading { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; }
+.review-card-heading > button:first-child { min-width: 0; flex: 1; display: grid; gap: 8px; border: 0; padding: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.review-card-heading code { color: #244a61; font-weight: 850; }
+.review-card-heading span { color: #4f626f; line-height: 1.5; }
+.review-fields { margin-top: 16px; display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 14px; }
+.review-fields label { display: grid; gap: 7px; color: #536675; font-size: .76rem; font-weight: 750; }
+.review-fields select, .review-fields textarea { width: 100%; border: 1px solid #c8d2d8; border-radius: 8px; padding: 10px 11px; background: #fff; color: #17202a; font: inherit; outline: none; }
+.review-fields select:focus, .review-fields textarea:focus { border-color: #27759c; box-shadow: 0 0 0 3px rgba(39, 117, 156, .12); }
+.review-fields textarea { min-height: 86px; resize: vertical; line-height: 1.45; }
+.review-card-footer { margin-top: 14px; padding-top: 13px; border-top: 1px solid #edf0f2; display: flex; justify-content: space-between; align-items: center; gap: 14px; color: #6a7d88; font-size: .78rem; }
+@media (max-width: 760px) {
+  .review-fields { grid-template-columns: 1fr; }
+  .review-card-heading, .review-card-footer, .review-heading { align-items: stretch; flex-direction: column; }
+  .action-group { align-items: stretch; }
+}
