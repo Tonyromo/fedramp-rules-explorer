@@ -5,6 +5,8 @@ import './review.css'
 import './milestone2.css'
 import './milestone3.css'
 import './milestone4.css'
+import './spiderGraph.css'
+import './relationshipGraph'
 import App from './App'
 import { installMilestone4Enhancements } from './milestone4'
 
