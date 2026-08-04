@@ -1,5 +1,5 @@
 .control-grid::before {
-  content: "Counts show how many official FedRAMP rules and Key Security Indicators reference each control. Rule processes are counted only where a linked rule belongs to an FRR process.";
+  content: "Each control shows the official Key Security Indicators that reference it. Empty relationship types are omitted.";
   grid-column: 1 / -1;
   display: block;
   margin: 0 0 0.25rem;
@@ -12,22 +12,17 @@
   line-height: 1.45;
 }
 
-.control-card dl > div:nth-child(3) dt {
-  font-size: 0;
+.control-card dl {
+  grid-template-columns: minmax(7rem, auto);
+  justify-content: start;
 }
 
-.control-card dl > div:nth-child(3) dt::after {
-  content: "RULE PROCESSES";
-  font-size: 0.75rem;
+.control-card dl > div:only-child {
+  min-width: 7rem;
 }
 
-.relationship-summary .stat-card:nth-child(3) span {
-  font-size: 0;
-}
-
-.relationship-summary .stat-card:nth-child(3) span::after {
-  content: "Rule processes";
-  font-size: 0.9rem;
+.relationship-summary {
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
 }
 
 .rule-card .rule-tags {
