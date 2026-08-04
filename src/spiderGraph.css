@@ -1,15 +1,16 @@
-.relationship-tabs { width: 100%; margin-top: 20px; padding: 0; overflow: hidden; border: 1px solid #dce3e7; border-radius: 12px; background: #fff; }
-.relationship-tabs-nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 1px solid #dce3e7; background: #eef3f5; }
+.relationship-tabs { grid-column: 1 / -1; width: 100%; max-width: none; margin-top: 20px; padding: 0; overflow: hidden; border: 1px solid #dce3e7; border-radius: 12px; background: #fff; }
+.relationship-tabs-nav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid #dce3e7; background: #eef3f5; }
 .relationship-tab { min-width: 0; padding: 14px 16px; border: 0; border-right: 1px solid #dce3e7; background: transparent; color: #425762; text-align: center; font-weight: 800; cursor: pointer; }
 .relationship-tab:last-child { border-right: 0; }
 .relationship-tab:hover { background: #e5edf1; }
 .relationship-tab.active { background: #fff; color: #1769aa; box-shadow: inset 0 -3px 0 #1769aa; }
 .relationship-tab:focus-visible { outline: 3px solid rgba(23, 105, 170, .25); outline-offset: -3px; }
-.relationship-tab-content { min-width: 0; padding: 20px; }
+.relationship-tab-content { width: 100%; min-width: 0; padding: 20px; }
 .relationship-tab-panel[hidden] { display: none; }
-.relationship-tab-panel.active { display: block; }
-.relationship-tab-panel > .detail-section { padding: 0; border: 0; }
+.relationship-tab-panel.active { display: block; width: 100%; }
+.relationship-tab-panel > .detail-section { width: 100%; max-width: none; padding: 0; border: 0; }
 .relationship-tab-panel > .detail-section > h3 { display: none; }
+#processes-panel .chip-list { display: flex; flex-wrap: wrap; gap: 10px; }
 
 .spider-graph-section { width: 100%; }
 .spider-graph-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin-bottom: 14px; }
@@ -41,7 +42,7 @@
 .spider-node.clickable:hover circle, .spider-node.clickable:focus circle { stroke-width: 4; filter: drop-shadow(0 3px 5px rgba(24, 45, 58, .18)); }
 .spider-node:focus { outline: none; }
 
-.relationship-table { display: grid; gap: 0; overflow: hidden; border: 1px solid #dce3e7; border-radius: 10px; }
+.relationship-table { display: grid; width: 100%; gap: 0; overflow: hidden; border: 1px solid #dce3e7; border-radius: 10px; }
 .relationship-table-header, .relationship-table-row { display: grid !important; grid-template-columns: minmax(110px, .7fr) minmax(280px, 2.3fr) minmax(130px, .8fr); align-items: start; gap: 18px; width: 100%; }
 .relationship-table-header { padding: 11px 14px; background: #eef3f5; color: #526875; font-size: .72rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
 .relationship-table-row { padding: 14px !important; margin: 0 !important; border: 0 !important; border-top: 1px solid #e4e9ec !important; border-radius: 0 !important; background: #fff !important; text-align: left; }
