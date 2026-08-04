@@ -1,14 +1,5 @@
 .control-relationship-map {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 22px;
-}
-
-.control-relationship-map > .detail-actions,
-.control-relationship-map > .detail-header,
-.control-relationship-map > .relationship-summary,
-.control-relationship-map > .detail-section:nth-of-type(n+4) {
-  grid-column: 1 / -1;
+  display: block;
 }
 
 .control-relationship-map > .relationship-summary {
@@ -34,28 +25,6 @@
   letter-spacing: .08em;
   text-transform: uppercase;
 }
-
-.control-relationship-map > .detail-section:nth-of-type(2),
-.control-relationship-map > .detail-section:nth-of-type(3) {
-  position: relative;
-  margin-top: 20px;
-  padding: 20px;
-  border: 1px solid #dce3e7;
-  border-radius: 12px;
-}
-
-.control-relationship-map > .detail-section:nth-of-type(2)::before,
-.control-relationship-map > .detail-section:nth-of-type(3)::before {
-  content: "";
-  position: absolute;
-  top: -21px;
-  width: 1px;
-  height: 20px;
-  background: #b9ccd7;
-}
-
-.control-relationship-map > .detail-section:nth-of-type(2)::before { right: 25%; }
-.control-relationship-map > .detail-section:nth-of-type(3)::before { left: 25%; }
 
 .rule-card,
 .control-card,
@@ -132,9 +101,5 @@ kbd {
 }
 
 @media (max-width: 800px) {
-  .control-relationship-map { grid-template-columns: 1fr; }
-  .control-relationship-map > * { grid-column: 1 !important; }
-  .control-relationship-map > .detail-section:nth-of-type(2)::before,
-  .control-relationship-map > .detail-section:nth-of-type(3)::before { display: none; }
   .sidebar::after { display: none; }
 }
