@@ -63,7 +63,7 @@ function readControlDetail(detail: HTMLElement) {
     y: 0,
   }))
 
-  return { heading, rules, indicators, processes, ruleSection, indicatorSection }
+  return { heading, rules, indicators, processes, ruleSection, indicatorSection, processSection }
 }
 
 function makeRelationshipTable(section: HTMLElement, kind: 'rules' | 'indicators') {
@@ -99,11 +99,13 @@ function renderGraph(detail: HTMLElement) {
       <button class="relationship-tab active" type="button" role="tab" aria-selected="true" aria-controls="relationship-viewer-panel">Relationship Viewer</button>
       <button class="relationship-tab" type="button" role="tab" aria-selected="false" aria-controls="referenced-indicators-panel">Referenced Indicators</button>
       <button class="relationship-tab" type="button" role="tab" aria-selected="false" aria-controls="referenced-rules-panel">Referenced Rules</button>
+      <button class="relationship-tab" type="button" role="tab" aria-selected="false" aria-controls="processes-panel">Processes</button>
     </div>
     <div class="relationship-tab-content">
       <div class="relationship-tab-panel active" role="tabpanel" id="relationship-viewer-panel"></div>
       <div class="relationship-tab-panel" role="tabpanel" id="referenced-indicators-panel" hidden></div>
       <div class="relationship-tab-panel" role="tabpanel" id="referenced-rules-panel" hidden></div>
+      <div class="relationship-tab-panel" role="tabpanel" id="processes-panel" hidden></div>
     </div>
   `
 
@@ -113,8 +115,10 @@ function renderGraph(detail: HTMLElement) {
   const graphPanel = tabContainer.querySelector<HTMLElement>('#relationship-viewer-panel')!
   const indicatorsPanel = tabContainer.querySelector<HTMLElement>('#referenced-indicators-panel')!
   const rulesPanel = tabContainer.querySelector<HTMLElement>('#referenced-rules-panel')!
+  const processesPanel = tabContainer.querySelector<HTMLElement>('#processes-panel')!
   indicatorsPanel.append(relationship.indicatorSection)
   rulesPanel.append(relationship.ruleSection)
+  processesPanel.append(relationship.processSection)
 
   const graphSection = document.createElement('div')
   graphSection.className = 'spider-graph-section'
