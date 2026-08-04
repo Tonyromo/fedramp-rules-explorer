@@ -1,0 +1,133 @@
+.control-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 12px;
+}
+
+.control-card {
+  display: grid;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid #d9e1e5;
+  border-radius: 11px;
+  background: #fff;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.control-card:hover {
+  border-color: #6f9bb3;
+  box-shadow: 0 4px 14px rgba(27, 47, 61, .07);
+}
+
+.control-card > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.control-card code {
+  color: #244a61;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.control-card > div span {
+  color: #667b88;
+  font-size: .75rem;
+}
+
+.control-card dl {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 0;
+}
+
+.control-card dl div {
+  display: grid;
+  gap: 4px;
+}
+
+.control-card dt {
+  color: #71828e;
+  font-size: .68rem;
+  text-transform: uppercase;
+}
+
+.control-card dd {
+  margin: 0;
+  font-weight: 800;
+}
+
+.chip-button {
+  border: 0;
+  padding: 5px 8px;
+  border-radius: 7px;
+  background: #e6f0f7;
+  color: #245b7b;
+  font-size: .72rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.chip-button:hover {
+  background: #d3e5f0;
+}
+
+.relationship-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 22px 0 0;
+}
+
+.relationship-list {
+  display: grid;
+  gap: 9px;
+}
+
+.relationship-list button,
+.relationship-list article {
+  display: grid;
+  gap: 7px;
+  width: 100%;
+  padding: 15px;
+  border: 1px solid #dce3e7;
+  border-radius: 9px;
+  background: #fff;
+  color: inherit;
+  text-align: left;
+}
+
+.relationship-list button {
+  cursor: pointer;
+}
+
+.relationship-list button:hover {
+  border-color: #6f9bb3;
+  background: #f8fbfc;
+}
+
+.relationship-list code {
+  color: #244a61;
+  font-weight: 800;
+}
+
+.relationship-list span {
+  color: #435965;
+  line-height: 1.5;
+}
+
+.relationship-list small {
+  color: #71828e;
+}
+
+@media (max-width: 700px) {
+  .control-grid,
+  .relationship-summary {
+    grid-template-columns: 1fr;
+  }
+}
