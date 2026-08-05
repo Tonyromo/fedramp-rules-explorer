@@ -69,28 +69,28 @@ function readControlDetail(detail: HTMLElement) {
   const processSection = sectionByTitle('Processes')
   if (!ruleSection || !indicatorSection || !processSection) return null
 
-  const rules = Array.from(ruleSection.querySelectorAll<HTMLElement>('.relationship-list > button')).map((target) => ({
+  const rules: GraphNode[] = Array.from(ruleSection.querySelectorAll<HTMLElement>('.relationship-list > button')).map((target) => ({
     id: target.querySelector('code')?.textContent?.trim() ?? 'Rule',
     label: target.querySelector('code')?.textContent?.trim() ?? 'Rule',
-    kind: 'rule' as const,
+    kind: 'rule',
     target,
     x: 0,
     y: 0,
   }))
 
-  const indicators = Array.from(indicatorSection.querySelectorAll<HTMLElement>('.relationship-list > article')).map((target) => ({
+  const indicators: GraphNode[] = Array.from(indicatorSection.querySelectorAll<HTMLElement>('.relationship-list > article')).map((target) => ({
     id: target.querySelector('code')?.textContent?.trim() ?? 'Indicator',
     label: target.querySelector('code')?.textContent?.trim() ?? 'Indicator',
-    kind: 'indicator' as const,
+    kind: 'indicator',
     target,
     x: 0,
     y: 0,
   }))
 
-  const processes = Array.from(processSection.querySelectorAll<HTMLElement>('.chip-list > span')).map((target) => ({
+  const processes: GraphNode[] = Array.from(processSection.querySelectorAll<HTMLElement>('.chip-list > span')).map((target) => ({
     id: target.textContent?.trim() ?? 'Process',
     label: target.textContent?.trim() ?? 'Process',
-    kind: 'process' as const,
+    kind: 'process',
     x: 0,
     y: 0,
   }))
@@ -237,7 +237,7 @@ function renderGraph(detail: HTMLElement) {
   viewport.append(minimap)
 
   const center: GraphNode = { id: relationship.heading, label: relationship.heading, kind: 'control', x: 550, y: 350 }
-  const nodes = [center, ...relationship.rules, ...relationship.indicators, ...relationship.processes]
+  const nodes: GraphNode[] = [center, ...relationship.rules, ...relationship.indicators, ...relationship.processes]
   const edges: GraphEdge[] = nodes.slice(1).map((node) => ({ source: center, target: node }))
   const edgeElements = new Map<string, SVGLineElement>()
   const nodeElements = new Map<string, SVGGElement>()
@@ -444,10 +444,9 @@ function renderGraph(detail: HTMLElement) {
 
     pinnedPositions.forEach((position, id) => {
       const node = nodes.find((item) => item.id === id)
-      if (node) {
-        node.x = position.x
-        node.y = position.y
-      }
+      if (!node) return
+      node.x = position.x
+      node.y = position.y
     })
 
     nodeElements.forEach((element, id) => {
@@ -665,3 +664,5 @@ function enhance() {
 const observer = new MutationObserver(enhance)
 observer.observe(document.documentElement, { childList: true, subtree: true })
 queueMicrotask(enhance)
+
+export {}
