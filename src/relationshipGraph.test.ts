@@ -56,8 +56,8 @@ describe('relationship viewer regression coverage', () => {
     renderControlDetail()
     await loadViewer()
 
-    const heading = document.querySelector('.spider-graph-heading')
-    const actions = document.querySelector('.spider-graph-actions')
+    const heading = document.querySelector<HTMLElement>('.spider-graph-heading')
+    const actions = document.querySelector<HTMLElement>('.spider-graph-actions')
 
     expect(heading).toContainElement(actions)
     expect(heading?.firstElementChild?.nextElementSibling).toBe(actions)
