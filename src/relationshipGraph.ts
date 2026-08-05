@@ -178,6 +178,10 @@ function renderGraph(detail: HTMLElement) {
     <div class="spider-graph-heading">
       <div><h3>Relationship viewer</h3><p>Drag to pan, scroll to zoom, and select any node to inspect it.</p></div>
       <div class="spider-graph-actions">
+        <label class="relationship-search-control">Search
+          <input type="search" data-action="search" placeholder="Find a node" aria-label="Search relationship graph nodes" autocomplete="off">
+        </label>
+        <button class="secondary-button" type="button" data-action="search-clear" hidden>Clear</button>
         <label class="relationship-layout-control">Layout
           <select data-action="layout" aria-label="Relationship graph layout">
             <option value="radial">Radial</option>
@@ -190,6 +194,7 @@ function renderGraph(detail: HTMLElement) {
         <button class="secondary-button" type="button" data-action="toggle">Hide graph</button>
       </div>
     </div>
+    <div class="relationship-search-status" data-search-status aria-live="polite"></div>
     <div class="spider-legend">
       <span class="legend-control">Control</span><span class="legend-rule">Rules</span><span class="legend-indicator">Indicators</span><span class="legend-process">Processes</span>
     </div>
@@ -238,6 +243,13 @@ function renderGraph(detail: HTMLElement) {
   const minimapEdges = new Map<string, SVGLineElement>()
   const minimapNodes = new Map<string, SVGCircleElement>()
 
+  let scale = 1
+  let translateX = 0
+  let translateY = 0
+  let dragging = false
+  let startX = 0
+  let startY = 0
+
   const updateMinimapViewport = () => {
     const x = -translateX / scale
     const y = -translateY / scale
@@ -245,6 +257,88 @@ function renderGraph(detail: HTMLElement) {
     minimapViewport.setAttribute('y', String(y))
     minimapViewport.setAttribute('width', String(1100 / scale))
     minimapViewport.setAttribute('height', String(700 / scale))
+  }
+
+  const applyTransform = () => {
+    scene.setAttribute('transform', `translate(${translateX} ${translateY}) scale(${scale})`)
+    updateMinimapViewport()
+  }
+
+  const centerOnControl = () => {
+    translateX = center.x * (1 - scale)
+    translateY = center.y * (1 - scale)
+  }
+
+  const fit = () => {
+    scale = 1
+    centerOnControl()
+    applyTransform()
+  }
+
+  const focusNode = (node: GraphNode) => {
+    scale = Math.max(scale, 1.35)
+    translateX = 550 - node.x * scale
+    translateY = 350 - node.y * scale
+    applyTransform()
+    nodeElements.get(node.id)?.focus()
+  }
+
+  const clearHighlight = () => {
+    scene.classList.remove('has-highlight')
+    nodeElements.forEach((element) => element.classList.remove('is-highlighted', 'is-connected', 'is-dimmed', 'is-search-match'))
+    edgeElements.forEach((element) => element.classList.remove('is-highlighted', 'is-dimmed'))
+  }
+
+  const highlightNode = (node: GraphNode) => {
+    clearHighlight()
+    scene.classList.add('has-highlight')
+
+    if (node.kind === 'control') {
+      nodeElements.forEach((element) => element.classList.add('is-connected'))
+      edgeElements.forEach((element) => element.classList.add('is-highlighted'))
+      return
+    }
+
+    nodeElements.forEach((element, id) => {
+      if (id === node.id) element.classList.add('is-highlighted')
+      else if (id === center.id) element.classList.add('is-connected')
+      else element.classList.add('is-dimmed')
+    })
+
+    edgeElements.forEach((element, id) => {
+      element.classList.add(id === node.id ? 'is-highlighted' : 'is-dimmed')
+    })
+  }
+
+  const applySearch = (query: string) => {
+    const normalized = query.trim().toLowerCase()
+    const status = graphSection.querySelector<HTMLElement>('[data-search-status]')!
+    const clearButton = graphSection.querySelector<HTMLButtonElement>('[data-action="search-clear"]')!
+
+    nodeElements.forEach((element) => element.classList.remove('is-search-match', 'is-dimmed'))
+    edgeElements.forEach((element) => element.classList.remove('is-dimmed'))
+    scene.classList.remove('has-highlight')
+
+    if (!normalized) {
+      status.textContent = ''
+      clearButton.hidden = true
+      return
+    }
+
+    const matches = nodes.filter((node) => `${node.id} ${node.label} ${node.kind}`.toLowerCase().includes(normalized))
+    const matchIds = new Set(matches.map((node) => node.id))
+    clearButton.hidden = false
+
+    nodeElements.forEach((element, id) => {
+      element.classList.add(matchIds.has(id) ? 'is-search-match' : 'is-dimmed')
+    })
+    edgeElements.forEach((element, id) => {
+      element.classList.toggle('is-dimmed', !matchIds.has(id) && !matchIds.has(center.id))
+    })
+    scene.classList.add('has-highlight')
+    status.textContent = matches.length === 1 ? '1 node found.' : `${matches.length} nodes found.`
+
+    if (matches.length === 1) focusNode(matches[0])
   }
 
   const applyLayout = (layout: LayoutMode) => {
@@ -335,35 +429,8 @@ function renderGraph(detail: HTMLElement) {
     minimapScene.append(minimapEdge)
   })
 
-  const clearHighlight = () => {
-    scene.classList.remove('has-highlight')
-    nodeElements.forEach((element) => element.classList.remove('is-highlighted', 'is-connected', 'is-dimmed'))
-    edgeElements.forEach((element) => element.classList.remove('is-highlighted', 'is-dimmed'))
-  }
-
-  const highlightNode = (node: GraphNode) => {
-    clearHighlight()
-    scene.classList.add('has-highlight')
-
-    if (node.kind === 'control') {
-      nodeElements.forEach((element) => element.classList.add('is-connected'))
-      edgeElements.forEach((element) => element.classList.add('is-highlighted'))
-      return
-    }
-
-    nodeElements.forEach((element, id) => {
-      if (id === node.id) element.classList.add('is-highlighted')
-      else if (id === center.id) element.classList.add('is-connected')
-      else element.classList.add('is-dimmed')
-    })
-
-    edgeElements.forEach((element, id) => {
-      element.classList.add(id === node.id ? 'is-highlighted' : 'is-dimmed')
-    })
-  }
-
   nodes.forEach((node) => {
-    const group = svgElement('g', { class: `spider-node node-${node.kind}`, tabindex: node.target ? '0' : '-1', transform: `translate(${node.x} ${node.y})` })
+    const group = svgElement('g', { class: `spider-node node-${node.kind}`, tabindex: '0', transform: `translate(${node.x} ${node.y})` })
     group.setAttribute('data-node-id', node.id)
     const radius = node.kind === 'control' ? 62 : node.kind === 'process' ? 32 : 27
     group.append(svgElement('circle', { r: String(radius) }))
@@ -381,7 +448,6 @@ function renderGraph(detail: HTMLElement) {
     group.addEventListener('pointerleave', clearHighlight)
     group.addEventListener('focus', () => highlightNode(node))
     group.addEventListener('blur', clearHighlight)
-
     if (node.target) group.classList.add('clickable')
     scene.append(group)
 
@@ -394,23 +460,6 @@ function renderGraph(detail: HTMLElement) {
     minimapNodes.set(node.id, minimapNode)
     minimapScene.append(minimapNode)
   })
-
-  let scale = 1
-  let translateX = 0
-  let translateY = 0
-  let dragging = false
-  let startX = 0
-  let startY = 0
-
-  const applyTransform = () => {
-    scene.setAttribute('transform', `translate(${translateX} ${translateY}) scale(${scale})`)
-    updateMinimapViewport()
-  }
-  const centerOnControl = () => {
-    translateX = center.x * (1 - scale)
-    translateY = center.y * (1 - scale)
-  }
-  const fit = () => { scale = 1; centerOnControl(); applyTransform() }
 
   applyLayout('radial')
   applyTransform()
@@ -457,9 +506,25 @@ function renderGraph(detail: HTMLElement) {
     applyTransform()
   })
 
+  const searchInput = graphSection.querySelector<HTMLInputElement>('[data-action="search"]')!
+  const clearSearchButton = graphSection.querySelector<HTMLButtonElement>('[data-action="search-clear"]')!
+  searchInput.addEventListener('input', () => applySearch(searchInput.value))
+  searchInput.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return
+    const normalized = searchInput.value.trim().toLowerCase()
+    const match = nodes.find((node) => `${node.id} ${node.label} ${node.kind}`.toLowerCase().includes(normalized))
+    if (match) focusNode(match)
+  })
+  clearSearchButton.addEventListener('click', () => {
+    searchInput.value = ''
+    applySearch('')
+    searchInput.focus()
+  })
+
   graphSection.querySelector<HTMLSelectElement>('[data-action="layout"]')?.addEventListener('change', (event) => {
     applyLayout((event.currentTarget as HTMLSelectElement).value as LayoutMode)
     fit()
+    applySearch(searchInput.value)
   })
   graphSection.querySelector<HTMLButtonElement>('[data-action="fit"]')?.addEventListener('click', fit)
   graphSection.querySelector<HTMLButtonElement>('[data-action="toggle"]')?.addEventListener('click', (event) => {
@@ -467,6 +532,7 @@ function renderGraph(detail: HTMLElement) {
     const hidden = viewport.hidden
     viewport.hidden = !hidden
     graphSection.querySelector<HTMLElement>('.spider-legend')!.hidden = !hidden
+    graphSection.querySelector<HTMLElement>('[data-search-status]')!.hidden = !hidden
     button.textContent = hidden ? 'Hide graph' : 'Show graph'
   })
 }
