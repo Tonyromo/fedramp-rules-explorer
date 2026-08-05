@@ -8,6 +8,7 @@ type GraphNode = {
 }
 
 type GraphEdge = { source: GraphNode; target: GraphNode }
+type LayoutMode = 'radial' | 'hierarchical' | 'tree' | 'force'
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 const GRAPH_MARKER = 'data-spider-graph-ready'
@@ -177,6 +178,14 @@ function renderGraph(detail: HTMLElement) {
     <div class="spider-graph-heading">
       <div><h3>Relationship viewer</h3><p>Drag to pan, scroll to zoom, and select any node to inspect it.</p></div>
       <div class="spider-graph-actions">
+        <label class="relationship-layout-control">Layout
+          <select data-action="layout" aria-label="Relationship graph layout">
+            <option value="radial">Radial</option>
+            <option value="hierarchical">Hierarchical</option>
+            <option value="tree">Tree</option>
+            <option value="force">Force</option>
+          </select>
+        </label>
         <button class="secondary-button" type="button" data-action="fit">Fit to view</button>
         <button class="secondary-button" type="button" data-action="toggle">Hide graph</button>
       </div>
@@ -212,14 +221,68 @@ function renderGraph(detail: HTMLElement) {
   viewport.append(svg)
 
   const center: GraphNode = { id: relationship.heading, label: relationship.heading, kind: 'control', x: 550, y: 350 }
-  distribute(relationship.rules, 280, 250, Math.min(190, 75 + relationship.rules.length * 7), -Math.PI / 2)
-  distribute(relationship.indicators, 820, 245, Math.min(170, 80 + relationship.indicators.length * 9), -Math.PI / 2)
-  distribute(relationship.processes, 720, 535, Math.min(125, 70 + relationship.processes.length * 12), Math.PI / 2)
-
   const nodes = [center, ...relationship.rules, ...relationship.indicators, ...relationship.processes]
   const edges: GraphEdge[] = nodes.slice(1).map((node) => ({ source: center, target: node }))
   const edgeElements = new Map<string, SVGLineElement>()
   const nodeElements = new Map<string, SVGGElement>()
+
+  const applyLayout = (layout: LayoutMode) => {
+    if (layout === 'radial') {
+      center.x = 550
+      center.y = 350
+      distribute(relationship.rules, 280, 250, Math.min(190, 75 + relationship.rules.length * 7), -Math.PI / 2)
+      distribute(relationship.indicators, 820, 245, Math.min(170, 80 + relationship.indicators.length * 9), -Math.PI / 2)
+      distribute(relationship.processes, 720, 535, Math.min(125, 70 + relationship.processes.length * 12), Math.PI / 2)
+    } else if (layout === 'hierarchical') {
+      center.x = 550
+      center.y = 100
+      const groups = [relationship.rules, relationship.indicators, relationship.processes]
+      const yPositions = [270, 430, 580]
+      groups.forEach((group, groupIndex) => {
+        group.forEach((node, index) => {
+          const spacing = 900 / Math.max(group.length, 1)
+          node.x = 100 + spacing / 2 + index * spacing
+          node.y = yPositions[groupIndex]
+        })
+      })
+    } else if (layout === 'tree') {
+      center.x = 160
+      center.y = 350
+      const groups = [relationship.rules, relationship.indicators, relationship.processes]
+      const xPositions = [430, 720, 960]
+      groups.forEach((group, groupIndex) => {
+        group.forEach((node, index) => {
+          const spacing = 560 / Math.max(group.length, 1)
+          node.x = xPositions[groupIndex]
+          node.y = 70 + spacing / 2 + index * spacing
+        })
+      })
+    } else {
+      center.x = 550
+      center.y = 350
+      const all = [...relationship.rules, ...relationship.indicators, ...relationship.processes]
+      all.forEach((node, index) => {
+        const angle = (Math.PI * 2 * index) / Math.max(all.length, 1)
+        const kindOffset = node.kind === 'rule' ? -40 : node.kind === 'indicator' ? 30 : 85
+        const radius = 180 + (index % 4) * 48 + kindOffset
+        node.x = 550 + Math.cos(angle) * radius
+        node.y = 350 + Math.sin(angle) * radius * 0.78
+      })
+    }
+
+    nodeElements.forEach((element, id) => {
+      const node = nodes.find((item) => item.id === id)
+      if (node) element.setAttribute('transform', `translate(${node.x} ${node.y})`)
+    })
+    edgeElements.forEach((element, id) => {
+      const node = nodes.find((item) => item.id === id)
+      if (!node) return
+      element.setAttribute('x1', String(center.x))
+      element.setAttribute('y1', String(center.y))
+      element.setAttribute('x2', String(node.x))
+      element.setAttribute('y2', String(node.y))
+    })
+  }
 
   edges.forEach(({ source, target }) => {
     const edge = svgElement('line', {
@@ -278,34 +341,11 @@ function renderGraph(detail: HTMLElement) {
     group.addEventListener('focus', () => highlightNode(node))
     group.addEventListener('blur', clearHighlight)
 
-    if (node.target) {
-      group.classList.add('clickable')
-      const open = () => {
-        if (node.kind === 'indicator') {
-          group.dispatchEvent(new CustomEvent('relationship-indicator-select', {
-            bubbles: true,
-            composed: true,
-            detail: { id: node.id },
-          }))
-          return
-        }
-        node.target?.click()
-      }
-      group.addEventListener('click', (event) => {
-        event.preventDefault()
-        event.stopPropagation()
-        open()
-      })
-      group.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault()
-          event.stopPropagation()
-          open()
-        }
-      })
-    }
+    if (node.target) group.classList.add('clickable')
     scene.append(group)
   })
+
+  applyLayout('radial')
 
   let scale = 1
   let translateX = 0
@@ -354,6 +394,10 @@ function renderGraph(detail: HTMLElement) {
     if (!dragging) clearHighlight()
   })
 
+  graphSection.querySelector<HTMLSelectElement>('[data-action="layout"]')?.addEventListener('change', (event) => {
+    applyLayout((event.currentTarget as HTMLSelectElement).value as LayoutMode)
+    fit()
+  })
   graphSection.querySelector<HTMLButtonElement>('[data-action="fit"]')?.addEventListener('click', fit)
   graphSection.querySelector<HTMLButtonElement>('[data-action="toggle"]')?.addEventListener('click', (event) => {
     const button = event.currentTarget as HTMLButtonElement
