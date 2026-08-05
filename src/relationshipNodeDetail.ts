@@ -163,8 +163,14 @@ function addReturnButton() {
     return
   }
 
+  const labelText = `Return to ${controlId}`
+
   if (existing) {
-    existing.querySelector('[data-return-control-label]')!.textContent = `Return to ${controlId}`
+    const label = existing.querySelector<HTMLElement>('[data-return-control-label]')
+    if (label && label.textContent !== labelText) label.textContent = labelText
+    if (existing.getAttribute('aria-label') !== `Return to control ${controlId}`) {
+      existing.setAttribute('aria-label', `Return to control ${controlId}`)
+    }
     return
   }
 
@@ -173,7 +179,7 @@ function addReturnButton() {
   button.className = 'indicator-return-button'
   button.setAttribute('data-return-control', 'true')
   button.setAttribute('aria-label', `Return to control ${controlId}`)
-  button.innerHTML = `<span aria-hidden="true">←</span><span data-return-control-label>Return to ${escapeHtml(controlId)}</span>`
+  button.innerHTML = `<span aria-hidden="true">←</span><span data-return-control-label>${escapeHtml(labelText)}</span>`
   button.addEventListener('click', () => returnToControl(controlId))
   document.body.append(button)
 }
