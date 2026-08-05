@@ -13,6 +13,7 @@ import App from './App'
 import { installMilestone4Enhancements } from './milestone4'
 import { installIndicatorNavigation } from './indicatorNavigation'
 import { installControlClarity } from './controlClarity'
+import { installContentClarity } from './contentClarity'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -23,3 +24,4 @@ createRoot(document.getElementById('root')!).render(
 installMilestone4Enhancements()
 installIndicatorNavigation()
 installControlClarity()
+installContentClarity()
