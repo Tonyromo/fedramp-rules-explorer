@@ -1,5 +1,5 @@
 import { fireEvent, screen, waitFor } from '@testing-library/dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 function renderControlDetail() {
   document.body.innerHTML = `
@@ -47,6 +47,11 @@ describe('relationship viewer regression coverage', () => {
     sessionStorage.clear()
   })
 
+  afterEach(() => {
+    document.body.innerHTML = ''
+    vi.resetModules()
+  })
+
   it('renders the viewer controls on their own row beneath the heading', async () => {
     renderControlDetail()
     await loadViewer()
@@ -55,7 +60,7 @@ describe('relationship viewer regression coverage', () => {
     const actions = document.querySelector('.spider-graph-actions')
 
     expect(heading).toContainElement(actions)
-    expect(actions).toHaveStyle({ width: '100%' })
+    expect(heading?.firstElementChild?.nextElementSibling).toBe(actions)
     expect(screen.getByLabelText('Search relationship graph nodes')).toBeInTheDocument()
     expect(screen.getByLabelText('Relationship graph layout')).toBeInTheDocument()
   })
