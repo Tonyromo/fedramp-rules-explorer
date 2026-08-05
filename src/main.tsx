@@ -16,6 +16,7 @@ import { installIndicatorNavigation } from './indicatorNavigation'
 import { installControlClarity } from './controlClarity'
 import { installContentClarity } from './contentClarity'
 import { installRuleDetailClarity } from './ruleDetailClarity'
+import { installControlTabClarity } from './controlTabClarity'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -28,3 +29,4 @@ installIndicatorNavigation()
 installControlClarity()
 installContentClarity()
 installRuleDetailClarity()
+installControlTabClarity()
