@@ -1,6 +1,7 @@
 const RETURN_CONTEXT_KEY = 'fedramp-rules-explorer:return-control'
 const CARD_CLASS = 'relationship-node-card'
 const NODE_BOUND = 'data-relationship-detail-bound'
+const BREADCRUMB_CLASS = 'relationship-breadcrumbs'
 
 type NodeKind = 'control' | 'rule' | 'indicator' | 'process'
 
@@ -36,6 +37,46 @@ function removeCard(viewport?: HTMLElement) {
   (viewport ?? document).querySelector<HTMLElement>(`.${CARD_CLASS}`)?.remove()
 }
 
+function getControlId(detail: HTMLElement) {
+  return detail.querySelector('.detail-header h2')?.textContent?.trim() || 'Control'
+}
+
+function activateRelationshipViewer(detail: HTMLElement) {
+  const viewerTab = Array.from(detail.querySelectorAll<HTMLButtonElement>('.relationship-tab'))
+    .find((button) => button.textContent?.trim() === 'Relationship Viewer')
+  viewerTab?.click()
+}
+
+function addBreadcrumbs(detail: HTMLElement) {
+  if (detail.querySelector(`.${BREADCRUMB_CLASS}`)) return
+
+  const tabContainer = detail.querySelector<HTMLElement>('.relationship-tabs')
+  if (!tabContainer) return
+
+  const controlId = getControlId(detail)
+  const breadcrumbs = document.createElement('nav')
+  breadcrumbs.className = BREADCRUMB_CLASS
+  breadcrumbs.setAttribute('aria-label', 'Relationship navigation')
+  breadcrumbs.innerHTML = `
+    <button type="button" data-breadcrumb="controls">Controls</button>
+    <span aria-hidden="true">›</span>
+    <button type="button" data-breadcrumb="control">${escapeHtml(controlId)}</button>
+    <span aria-hidden="true">›</span>
+    <span aria-current="page">Relationship Viewer</span>
+  `
+
+  breadcrumbs.querySelector<HTMLButtonElement>('[data-breadcrumb="controls"]')?.addEventListener('click', () => {
+    sidebarButton('Controls')?.click()
+  })
+
+  breadcrumbs.querySelector<HTMLButtonElement>('[data-breadcrumb="control"]')?.addEventListener('click', () => {
+    activateRelationshipViewer(detail)
+    detail.querySelector('.detail-header')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
+
+  tabContainer.prepend(breadcrumbs)
+}
+
 function openIndicatorPage(id: string, controlId: string) {
   sessionStorage.setItem(RETURN_CONTEXT_KEY, controlId)
   sidebarButton('Indicators')?.click()
@@ -59,10 +100,6 @@ function openIndicatorPage(id: string, controlId: string) {
   }
 
   window.setTimeout(locate, 0)
-}
-
-function getControlId(detail: HTMLElement) {
-  return detail.querySelector('.detail-header h2')?.textContent?.trim() || 'Control'
 }
 
 function readNodeDetails(node: SVGGElement): NodeDetails | null {
@@ -116,7 +153,7 @@ function readNodeDetails(node: SVGGElement): NodeDetails | null {
       id,
       kind: 'control',
       typeLabel: 'Control',
-      summary: `Central control for the relationships shown in this viewer.`,
+      summary: 'Central control for the relationships shown in this viewer.',
     }
   }
 
@@ -227,10 +264,10 @@ function returnToControl(controlId: string) {
     sessionStorage.removeItem(RETURN_CONTEXT_KEY)
 
     window.setTimeout(() => {
-      const viewerTab = Array.from(document.querySelectorAll<HTMLButtonElement>('.relationship-tab'))
-        .find((button) => button.textContent?.trim() === 'Relationship Viewer')
-      viewerTab?.click()
-      document.querySelector('.relationship-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      const detail = document.querySelector<HTMLElement>('.detail-page')
+      if (!detail) return
+      activateRelationshipViewer(detail)
+      detail.querySelector('.relationship-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }, 100)
   }
 
@@ -267,8 +304,13 @@ function addReturnButton() {
   document.body.append(button)
 }
 
+function enhanceRelationshipDetails(root: ParentNode = document) {
+  root.querySelectorAll<HTMLElement>('.detail-page').forEach(addBreadcrumbs)
+  bindRelationshipNodes(root)
+}
+
 export function installRelationshipNodeDetail() {
-  bindRelationshipNodes()
+  enhanceRelationshipDetails()
   addReturnButton()
 
   document.addEventListener('click', (event) => {
@@ -282,6 +324,8 @@ export function installRelationshipNodeDetail() {
     for (const mutation of mutations) {
       mutation.addedNodes.forEach((node) => {
         if (!(node instanceof Element)) return
+        if (node.matches('.detail-page')) addBreadcrumbs(node as HTMLElement)
+        else node.querySelectorAll<HTMLElement>('.detail-page').forEach(addBreadcrumbs)
         if (node.matches('.spider-node')) bindRelationshipNodes(node.parentNode ?? document)
         else bindRelationshipNodes(node)
       })
