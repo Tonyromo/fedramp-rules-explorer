@@ -12,6 +12,8 @@ type NodeDetails = {
   summary: string
   relationshipLabel: string
   relationshipExplanation: string
+  reasoningSource: string
+  reasoningEvidence: string
   actionLabel?: string
   action?: () => void
 }
@@ -123,7 +125,9 @@ function readNodeDetails(node: SVGGElement): NodeDetails | null {
       typeLabel: theme,
       summary: statement,
       relationshipLabel: 'Control references indicator',
-      relationshipExplanation: `${controlId} references ${id} as an indicator used to assess or demonstrate the control’s intended security outcome.`,
+      relationshipExplanation: `${controlId} and ${id} are connected because the official indicator mapping lists this control.`,
+      reasoningSource: 'Official indicator control mapping',
+      reasoningEvidence: statement,
       actionLabel: 'Open indicator',
       action: () => openIndicatorPage(id, controlId),
     }
@@ -132,6 +136,7 @@ function readNodeDetails(node: SVGGElement): NodeDetails | null {
   if (node.classList.contains('node-rule')) {
     const row = findRuleRow(detail, id)
     const statement = row?.querySelector('span')?.textContent?.trim() || 'No rule statement supplied.'
+    const mapping = row?.querySelector('small')?.textContent?.trim() || 'No process or force supplied.'
     const target = Array.from(detail.querySelectorAll<HTMLButtonElement>('#referenced-rules-panel .relationship-table-row'))
       .find((item) => item.querySelector('code')?.textContent?.trim() === id)
     return {
@@ -139,32 +144,48 @@ function readNodeDetails(node: SVGGElement): NodeDetails | null {
       kind: 'rule',
       typeLabel: 'Referenced rule',
       summary: statement,
-      relationshipLabel: 'Control references rule',
-      relationshipExplanation: `${controlId} is connected to ${id} because the rule provides source requirements or decision criteria relevant to the control.`,
+      relationshipLabel: 'Control referenced by rule',
+      relationshipExplanation: `${controlId} and ${id} are connected because the official rule mapping explicitly includes this control.`,
+      reasoningSource: `Official rule control mapping · ${mapping}`,
+      reasoningEvidence: statement,
       actionLabel: target ? 'Open rule' : undefined,
       action: target ? () => target.click() : undefined,
     }
   }
 
   if (node.classList.contains('node-process')) {
+    const mappedRules = Array.from(detail.querySelectorAll<HTMLElement>('#referenced-rules-panel .relationship-table-row'))
+      .filter((row) => row.querySelector('small')?.textContent?.includes(id))
+      .map((row) => row.querySelector('code')?.textContent?.trim())
+      .filter((value): value is string => Boolean(value))
+    const evidence = mappedRules.length
+      ? `${mappedRules.slice(0, 4).join(', ')}${mappedRules.length > 4 ? ` and ${mappedRules.length - 4} more` : ''}`
+      : 'Process listed in the control relationship data.'
     return {
       id,
       kind: 'process',
       typeLabel: 'Process',
       summary: `This process is associated with ${controlId}.`,
-      relationshipLabel: 'Control supported by process',
-      relationshipExplanation: `${id} is shown because it is an operational process associated with implementing or maintaining ${controlId}.`,
+      relationshipLabel: 'Derived from mapped rules',
+      relationshipExplanation: `${id} appears because one or more rules mapped to ${controlId} belong to this process.`,
+      reasoningSource: 'Official rule process and control mappings',
+      reasoningEvidence: evidence,
     }
   }
 
   if (node.classList.contains('node-control')) {
+    const ruleCount = detail.querySelectorAll('#referenced-rules-panel .relationship-table-row').length
+    const indicatorCount = detail.querySelectorAll('#referenced-indicators-panel .relationship-table-row').length
+    const processCount = detail.querySelectorAll('#processes-panel .chip-list > span').length
     return {
       id,
       kind: 'control',
       typeLabel: 'Control',
       summary: 'Central control for the relationships shown in this viewer.',
       relationshipLabel: 'Relationship hub',
-      relationshipExplanation: `${controlId} is the central entity in this view. All displayed rules, indicators, and processes are directly associated with this control.`,
+      relationshipExplanation: `${controlId} is the selected control. Every displayed edge is calculated from the current validated FedRAMP mappings.`,
+      reasoningSource: 'Current validated FedRAMP dataset',
+      reasoningEvidence: `${ruleCount} rule mapping${ruleCount === 1 ? '' : 's'}, ${indicatorCount} indicator mapping${indicatorCount === 1 ? '' : 's'}, and ${processCount} process${processCount === 1 ? '' : 'es'}.`,
     }
   }
 
@@ -193,6 +214,10 @@ function showNodeCard(node: SVGGElement, focusAction = false) {
       <span>${escapeHtml(details.relationshipLabel)}</span>
       <p>${escapeHtml(details.relationshipExplanation)}</p>
     </div>
+    <div class="relationship-node-card-reasoning">
+      <div><span>Reasoning source</span><p>${escapeHtml(details.reasoningSource)}</p></div>
+      <div><span>Supporting evidence</span><p>${escapeHtml(details.reasoningEvidence)}</p></div>
+    </div>
     ${details.actionLabel ? `
       <div class="relationship-node-card-actions">
         <button type="button" class="primary-button" data-open-node>${escapeHtml(details.actionLabel)}</button>
@@ -202,8 +227,8 @@ function showNodeCard(node: SVGGElement, focusAction = false) {
 
   const viewportRect = viewport.getBoundingClientRect()
   const nodeRect = node.getBoundingClientRect()
-  const maxLeft = Math.max(16, viewportRect.width - 356)
-  const maxTop = Math.max(16, viewportRect.height - 320)
+  const maxLeft = Math.max(16, viewportRect.width - 376)
+  const maxTop = Math.max(16, viewportRect.height - 410)
   card.style.left = `${Math.min(Math.max(nodeRect.left - viewportRect.left + nodeRect.width + 14, 16), maxLeft)}px`
   card.style.top = `${Math.min(Math.max(nodeRect.top - viewportRect.top - 12, 16), maxTop)}px`
 
