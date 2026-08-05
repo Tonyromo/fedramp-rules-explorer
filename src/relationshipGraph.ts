@@ -252,6 +252,7 @@ function renderGraph(detail: HTMLElement) {
         node.target?.click()
       }
       group.addEventListener('click', (event) => {
+        event.preventDefault()
         event.stopPropagation()
         open()
       })
@@ -286,10 +287,29 @@ function renderGraph(detail: HTMLElement) {
     centerOnControl()
     applyTransform()
   }, { passive: false })
-  svg.addEventListener('pointerdown', (event) => { dragging = true; startX = event.clientX - translateX; startY = event.clientY - translateY; svg.setPointerCapture(event.pointerId) })
-  svg.addEventListener('pointermove', (event) => { if (!dragging) return; translateX = event.clientX - startX; translateY = event.clientY - startY; applyTransform() })
-  svg.addEventListener('pointerup', () => { dragging = false })
-  svg.addEventListener('pointercancel', () => { dragging = false })
+  svg.addEventListener('pointerdown', (event) => {
+    const target = event.target instanceof Element ? event.target : null
+    if (target?.closest('.spider-node.clickable')) return
+    dragging = true
+    startX = event.clientX - translateX
+    startY = event.clientY - translateY
+    svg.setPointerCapture(event.pointerId)
+  })
+  svg.addEventListener('pointermove', (event) => {
+    if (!dragging) return
+    translateX = event.clientX - startX
+    translateY = event.clientY - startY
+    applyTransform()
+  })
+  svg.addEventListener('pointerup', (event) => {
+    if (!dragging) return
+    dragging = false
+    if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId)
+  })
+  svg.addEventListener('pointercancel', (event) => {
+    dragging = false
+    if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId)
+  })
 
   graphSection.querySelector<HTMLButtonElement>('[data-action="fit"]')?.addEventListener('click', fit)
   graphSection.querySelector<HTMLButtonElement>('[data-action="toggle"]')?.addEventListener('click', (event) => {
