@@ -6,6 +6,7 @@ import './milestone2.css'
 import './milestone3.css'
 import './milestone4.css'
 import './spiderGraph.css'
+import './relationshipNodeDetail.css'
 import './clarity.css'
 import './ruleDetailClarity.css'
 import './relationshipGraph'
@@ -17,6 +18,7 @@ import { installControlClarity } from './controlClarity'
 import { installContentClarity } from './contentClarity'
 import { installRuleDetailClarity } from './ruleDetailClarity'
 import { installControlTabClarity } from './controlTabClarity'
+import { installRelationshipNodeDetail } from './relationshipNodeDetail'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -30,3 +32,4 @@ installControlClarity()
 installContentClarity()
 installRuleDetailClarity()
 installControlTabClarity()
+installRelationshipNodeDetail()
