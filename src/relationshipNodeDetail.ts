@@ -1,6 +1,17 @@
 const RETURN_CONTEXT_KEY = 'fedramp-rules-explorer:return-control'
 const CARD_CLASS = 'relationship-node-card'
-const NODE_BOUND = 'data-indicator-detail-bound'
+const NODE_BOUND = 'data-relationship-detail-bound'
+
+type NodeKind = 'control' | 'rule' | 'indicator' | 'process'
+
+type NodeDetails = {
+  id: string
+  kind: NodeKind
+  typeLabel: string
+  summary: string
+  actionLabel?: string
+  action?: () => void
+}
 
 function escapeHtml(value: string) {
   return value.replace(/[&<>'\"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]!)
@@ -13,6 +24,11 @@ function sidebarButton(label: string) {
 
 function findIndicatorRow(detail: HTMLElement, id: string) {
   return Array.from(detail.querySelectorAll<HTMLElement>('#referenced-indicators-panel .relationship-table-row'))
+    .find((row) => row.querySelector('code')?.textContent?.trim() === id)
+}
+
+function findRuleRow(detail: HTMLElement, id: string) {
+  return Array.from(detail.querySelectorAll<HTMLElement>('#referenced-rules-panel .relationship-table-row'))
     .find((row) => row.querySelector('code')?.textContent?.trim() === id)
 }
 
@@ -45,33 +61,91 @@ function openIndicatorPage(id: string, controlId: string) {
   window.setTimeout(locate, 0)
 }
 
-function showIndicatorCard(node: SVGGElement, focusAction = false) {
+function getControlId(detail: HTMLElement) {
+  return detail.querySelector('.detail-header h2')?.textContent?.trim() || 'Control'
+}
+
+function readNodeDetails(node: SVGGElement): NodeDetails | null {
   const detail = node.closest<HTMLElement>('.detail-page')
-  const viewport = node.closest<HTMLElement>('.spider-graph-viewport')
-  if (!detail || !viewport) return
+  if (!detail) return null
 
   const id = node.getAttribute('data-node-id') || node.querySelector('text')?.textContent?.trim() || ''
-  if (!id) return
+  if (!id) return null
 
-  const row = findIndicatorRow(detail, id)
-  const statement = row?.querySelector('span')?.textContent?.trim() || 'No statement supplied.'
-  const theme = row?.querySelector('small')?.textContent?.trim() || 'Key Security Indicator'
-  const controlId = detail.querySelector('.detail-header h2')?.textContent?.trim() || 'Control'
+  if (node.classList.contains('node-indicator')) {
+    const row = findIndicatorRow(detail, id)
+    const statement = row?.querySelector('span')?.textContent?.trim() || 'No statement supplied.'
+    const theme = row?.querySelector('small')?.textContent?.trim() || 'Key Security Indicator'
+    const controlId = getControlId(detail)
+    return {
+      id,
+      kind: 'indicator',
+      typeLabel: theme,
+      summary: statement,
+      actionLabel: 'Open indicator',
+      action: () => openIndicatorPage(id, controlId),
+    }
+  }
+
+  if (node.classList.contains('node-rule')) {
+    const row = findRuleRow(detail, id)
+    const statement = row?.querySelector('span')?.textContent?.trim() || 'No rule statement supplied.'
+    const target = Array.from(detail.querySelectorAll<HTMLButtonElement>('#referenced-rules-panel .relationship-table-row'))
+      .find((item) => item.querySelector('code')?.textContent?.trim() === id)
+    return {
+      id,
+      kind: 'rule',
+      typeLabel: 'Referenced rule',
+      summary: statement,
+      actionLabel: target ? 'Open rule' : undefined,
+      action: target ? () => target.click() : undefined,
+    }
+  }
+
+  if (node.classList.contains('node-process')) {
+    return {
+      id,
+      kind: 'process',
+      typeLabel: 'Process',
+      summary: `This process is associated with ${getControlId(detail)}.`,
+    }
+  }
+
+  if (node.classList.contains('node-control')) {
+    return {
+      id,
+      kind: 'control',
+      typeLabel: 'Control',
+      summary: `Central control for the relationships shown in this viewer.`,
+    }
+  }
+
+  return null
+}
+
+function showNodeCard(node: SVGGElement, focusAction = false) {
+  const viewport = node.closest<HTMLElement>('.spider-graph-viewport')
+  if (!viewport) return
+
+  const details = readNodeDetails(node)
+  if (!details) return
 
   removeCard(viewport)
 
   const card = document.createElement('section')
-  card.className = CARD_CLASS
+  card.className = `${CARD_CLASS} relationship-node-card-${details.kind}`
   card.setAttribute('role', 'dialog')
-  card.setAttribute('aria-label', `Indicator ${id}`)
+  card.setAttribute('aria-label', `${details.typeLabel} ${details.id}`)
   card.innerHTML = `
-    <button type="button" class="relationship-node-card-close" aria-label="Close indicator details">×</button>
-    <span class="relationship-node-card-type">${escapeHtml(theme)}</span>
-    <h4>${escapeHtml(id)}</h4>
-    <p>${escapeHtml(statement)}</p>
-    <div class="relationship-node-card-actions">
-      <button type="button" class="primary-button" data-open-indicator>Open indicator</button>
-    </div>
+    <button type="button" class="relationship-node-card-close" aria-label="Close ${escapeHtml(details.typeLabel.toLowerCase())} details">×</button>
+    <span class="relationship-node-card-type">${escapeHtml(details.typeLabel)}</span>
+    <h4>${escapeHtml(details.id)}</h4>
+    <p>${escapeHtml(details.summary)}</p>
+    ${details.actionLabel ? `
+      <div class="relationship-node-card-actions">
+        <button type="button" class="primary-button" data-open-node>${escapeHtml(details.actionLabel)}</button>
+      </div>
+    ` : ''}
   `
 
   const viewportRect = viewport.getBoundingClientRect()
@@ -82,17 +156,26 @@ function showIndicatorCard(node: SVGGElement, focusAction = false) {
   card.style.top = `${Math.min(Math.max(nodeRect.top - viewportRect.top - 12, 16), maxTop)}px`
 
   card.querySelector<HTMLButtonElement>('.relationship-node-card-close')?.addEventListener('click', () => removeCard(viewport))
-  card.querySelector<HTMLButtonElement>('[data-open-indicator]')?.addEventListener('click', () => openIndicatorPage(id, controlId))
+  card.querySelector<HTMLButtonElement>('[data-open-node]')?.addEventListener('click', () => details.action?.())
   viewport.append(card)
 
-  if (focusAction) card.querySelector<HTMLButtonElement>('[data-open-indicator]')?.focus()
+  if (focusAction) {
+    const action = card.querySelector<HTMLButtonElement>('[data-open-node]')
+    ;(action ?? card.querySelector<HTMLButtonElement>('.relationship-node-card-close'))?.focus()
+  }
 }
 
-function bindIndicatorNodes(root: ParentNode = document) {
-  root.querySelectorAll<SVGGElement>('.spider-node.node-indicator').forEach((node) => {
+function bindRelationshipNodes(root: ParentNode = document) {
+  root.querySelectorAll<SVGGElement>('.spider-node').forEach((node) => {
     if (node.hasAttribute(NODE_BOUND)) return
     node.setAttribute(NODE_BOUND, 'true')
     node.style.pointerEvents = 'all'
+    node.classList.add('clickable')
+    node.setAttribute('tabindex', '0')
+    node.setAttribute('role', 'button')
+
+    const id = node.getAttribute('data-node-id') || node.querySelector('text')?.textContent?.trim() || 'node'
+    node.setAttribute('aria-label', `View relationship details for ${id}`)
 
     let startX = 0
     let startY = 0
@@ -107,14 +190,14 @@ function bindIndicatorNodes(root: ParentNode = document) {
       if (moved > 6) return
       event.preventDefault()
       event.stopPropagation()
-      showIndicatorCard(node)
+      showNodeCard(node)
     }, true)
 
     node.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter' && event.key !== ' ') return
       event.preventDefault()
       event.stopPropagation()
-      showIndicatorCard(node, true)
+      showNodeCard(node, true)
     }, true)
   })
 }
@@ -185,13 +268,13 @@ function addReturnButton() {
 }
 
 export function installRelationshipNodeDetail() {
-  bindIndicatorNodes()
+  bindRelationshipNodes()
   addReturnButton()
 
   document.addEventListener('click', (event) => {
     if (!(event.target instanceof Element)) return
     const viewport = event.target.closest<HTMLElement>('.spider-graph-viewport')
-    if (!viewport || event.target.closest(`.${CARD_CLASS}`) || event.target.closest('.spider-node.node-indicator')) return
+    if (!viewport || event.target.closest(`.${CARD_CLASS}`) || event.target.closest('.spider-node')) return
     removeCard(viewport)
   })
 
@@ -199,8 +282,8 @@ export function installRelationshipNodeDetail() {
     for (const mutation of mutations) {
       mutation.addedNodes.forEach((node) => {
         if (!(node instanceof Element)) return
-        if (node.matches('.spider-node.node-indicator')) bindIndicatorNodes(node.parentNode ?? document)
-        else bindIndicatorNodes(node)
+        if (node.matches('.spider-node')) bindRelationshipNodes(node.parentNode ?? document)
+        else bindRelationshipNodes(node)
       })
     }
     addReturnButton()
