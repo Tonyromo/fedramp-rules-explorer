@@ -18,9 +18,12 @@
 .spider-graph-heading p { margin: 0; color: #657782; font-size: .85rem; }
 .spider-graph-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .spider-graph-actions label { display: inline-flex; align-items: center; gap: 8px; color: #425762; font-size: .9rem; font-weight: 800; white-space: nowrap; }
-.spider-graph-actions select { min-width: 150px; height: 42px; padding: 0 36px 0 13px; border: 1px solid #bfcbd2; border-radius: 10px; background: #fff; color: #253d4b; font: inherit; font-weight: 700; cursor: pointer; }
-.spider-graph-actions select:hover { border-color: #8ea4b1; }
-.spider-graph-actions select:focus-visible { outline: 3px solid rgba(23, 105, 170, .22); outline-offset: 2px; border-color: #1769aa; }
+.spider-graph-actions select, .spider-graph-actions input { min-width: 150px; height: 42px; padding: 0 13px; border: 1px solid #bfcbd2; border-radius: 10px; background: #fff; color: #253d4b; font: inherit; font-weight: 700; }
+.spider-graph-actions select { padding-right: 36px; cursor: pointer; }
+.spider-graph-actions input { min-width: 210px; }
+.spider-graph-actions select:hover, .spider-graph-actions input:hover { border-color: #8ea4b1; }
+.spider-graph-actions select:focus-visible, .spider-graph-actions input:focus-visible { outline: 3px solid rgba(23, 105, 170, .22); outline-offset: 2px; border-color: #1769aa; }
+.relationship-search-status { min-height: 20px; margin: -2px 0 10px; color: #526875; font-size: .82rem; font-weight: 700; }
 .spider-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 12px; color: #4f626f; font-size: .78rem; font-weight: 700; }
 .spider-legend span::before { content: ''; display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 50%; }
 .legend-control::before { background: #1769aa; }
@@ -60,16 +63,10 @@
 .spider-node:focus { outline: none; }
 .spider-node.is-highlighted circle { stroke-width: 5; filter: drop-shadow(0 5px 8px rgba(24, 45, 58, .25)); }
 .spider-node.is-connected circle { stroke-width: 4; filter: drop-shadow(0 3px 6px rgba(24, 45, 58, .18)); }
+.spider-node.is-search-match circle { stroke-width: 5; filter: drop-shadow(0 5px 8px rgba(23,105,170,.28)); }
 .spider-node.is-dimmed { opacity: .18; }
 .spider-edge.is-highlighted { opacity: 1; stroke-width: 4; filter: drop-shadow(0 2px 3px rgba(24, 45, 58, .22)); }
 .spider-edge.is-dimmed { opacity: .1; }
-.spider-node-expand { cursor: pointer; }
-.spider-node-expand circle { fill: #1769aa; stroke: #fff; stroke-width: 2; filter: drop-shadow(0 2px 3px rgba(24,45,58,.2)); }
-.spider-node-expand text { fill: #fff; font-size: 14px; font-weight: 900; pointer-events: none; }
-.spider-node-expand:hover circle, .spider-node-expand:focus circle { fill: #12598f; stroke-width: 3; }
-.spider-node-expand:focus { outline: none; }
-.spider-node.expanded-neighbour circle { stroke-dasharray: 4 3; }
-.spider-node.expanded-neighbour text { font-size: 11px; }
 
 .relationship-table { display: grid; width: 100%; gap: 0; overflow: hidden; border: 1px solid #dce3e7; border-radius: 10px; }
 .relationship-table-header, .relationship-table-row { display: grid !important; grid-template-columns: minmax(110px, .7fr) minmax(280px, 2.3fr) minmax(130px, .8fr); align-items: start; gap: 18px; width: 100%; }
@@ -91,16 +88,21 @@ article.relationship-table-row[role="button"]:focus-visible { outline: 3px solid
   .spider-node, .spider-node circle, .spider-node text, .spider-edge { transition: none; }
 }
 
+@media (max-width: 1100px) {
+  .spider-graph-heading { flex-direction: column; }
+  .spider-graph-actions { width: 100%; }
+}
+
 @media (max-width: 800px) {
   .relationship-tabs-nav { grid-template-columns: 1fr; }
   .relationship-tab { border-right: 0; border-bottom: 1px solid #dce3e7; text-align: left; }
   .relationship-tab:last-child { border-bottom: 0; }
   .relationship-tab.active { box-shadow: inset 4px 0 0 #1769aa; }
   .relationship-tab-content { padding: 14px; }
-  .spider-graph-heading { flex-direction: column; }
-  .spider-graph-actions { width: 100%; align-items: stretch; }
+  .spider-graph-actions { align-items: stretch; }
   .spider-graph-actions label { width: 100%; justify-content: space-between; }
-  .spider-graph-actions select { flex: 1; min-width: 0; }
+  .spider-graph-actions select, .spider-graph-actions input { flex: 1; min-width: 0; }
+  .spider-graph-actions [data-action="search-clear"] { width: 100%; }
   .spider-graph-viewport { height: 480px; }
   .spider-minimap { right: 10px; bottom: 10px; width: 138px; height: 90px; }
   .relationship-table-header { display: none !important; }
