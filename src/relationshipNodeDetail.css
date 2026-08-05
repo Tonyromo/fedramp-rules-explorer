@@ -10,7 +10,13 @@
 .relationship-node-card-close:hover { background: #f1edf7; color: #4f2e79; }
 .relationship-node-card-type { display: block; margin-right: 32px; color: #7653a6; font-size: .72rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
 .relationship-node-card h4 { margin: 6px 32px 8px 0; color: #253d4b; font-size: 1.05rem; }
-.relationship-node-card p { margin: 0; color: #526875; font-size: .88rem; line-height: 1.5; }
+.relationship-node-card > p { margin: 0; color: #526875; font-size: .88rem; line-height: 1.5; }
+.relationship-node-card-explanation { margin-top: 14px; padding: 12px 13px; border-left: 3px solid #1769aa; border-radius: 0 8px 8px 0; background: #f4f8fb; }
+.relationship-node-card-explanation > span { display: block; margin-bottom: 4px; color: #244a61; font-size: .72rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.relationship-node-card-explanation > p { margin: 0; color: #425762; font-size: .84rem; line-height: 1.48; }
+.relationship-node-card-rule .relationship-node-card-explanation { border-left-color: #2f8f46; background: #f4fbf5; }
+.relationship-node-card-indicator .relationship-node-card-explanation { border-left-color: #7a4db5; background: #faf7fd; }
+.relationship-node-card-process .relationship-node-card-explanation { border-left-color: #168b9d; background: #f2fbfc; }
 .relationship-node-card-actions { display: flex; justify-content: flex-end; margin-top: 16px; }
 .relationship-node-card-actions .primary-button { min-width: 132px; }
 .indicator-navigation-target { position: relative; z-index: 1; animation: indicator-target-pulse 2.6s ease-out; }
