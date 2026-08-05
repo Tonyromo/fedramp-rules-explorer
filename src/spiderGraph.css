@@ -27,9 +27,21 @@
 .legend-rule::before { background: #2f8f46; }
 .legend-indicator::before { background: #7a4db5; }
 .legend-process::before { background: #168b9d; }
-.spider-graph-viewport { width: 100%; height: 620px; overflow: hidden; border: 1px solid #dce3e7; border-radius: 12px; background: #fbfcfd; cursor: grab; }
+.spider-graph-viewport { position: relative; width: 100%; height: 620px; overflow: hidden; border: 1px solid #dce3e7; border-radius: 12px; background: #fbfcfd; cursor: grab; }
 .spider-graph-viewport:active { cursor: grabbing; }
-.spider-graph-viewport svg { width: 100%; height: 100%; touch-action: none; user-select: none; }
+.spider-graph-viewport > svg { width: 100%; height: 100%; touch-action: none; user-select: none; }
+.spider-minimap { position: absolute; right: 16px; bottom: 16px; width: 190px; height: 122px; overflow: hidden; border: 1px solid #bfcbd2; border-radius: 10px; background: rgba(255,255,255,.94); box-shadow: 0 8px 24px rgba(24,45,58,.16); cursor: pointer; }
+.spider-minimap svg { display: block; width: 100%; height: 100%; }
+.spider-minimap-edge { stroke: #c2ccd2; stroke-width: 5; opacity: .8; }
+.minimap-edge-rule { stroke: #82b68e; }
+.minimap-edge-indicator { stroke: #b59ad6; }
+.minimap-edge-process { stroke: #78b8c2; }
+.spider-minimap-node { stroke-width: 8; }
+.minimap-node-control { fill: #1769aa; stroke: #0f4e80; }
+.minimap-node-rule { fill: #f4fbf5; stroke: #2f8f46; }
+.minimap-node-indicator { fill: #faf7fd; stroke: #7a4db5; }
+.minimap-node-process { fill: #f2fbfc; stroke: #168b9d; }
+.spider-minimap-viewport { fill: rgba(23,105,170,.08); stroke: #1769aa; stroke-width: 8; vector-effect: non-scaling-stroke; pointer-events: none; }
 .spider-edge { stroke: #b9c6ce; stroke-width: 1.3; opacity: .8; transition: opacity .16s ease, stroke-width .16s ease, filter .16s ease; }
 .edge-rule { stroke: #82b68e; }
 .edge-indicator { stroke: #b59ad6; }
@@ -83,6 +95,7 @@ article.relationship-table-row[role="button"]:focus-visible { outline: 3px solid
   .spider-graph-actions label { width: 100%; justify-content: space-between; }
   .spider-graph-actions select { flex: 1; min-width: 0; }
   .spider-graph-viewport { height: 480px; }
+  .spider-minimap { right: 10px; bottom: 10px; width: 138px; height: 90px; }
   .relationship-table-header { display: none !important; }
   .relationship-table-row { grid-template-columns: 1fr; gap: 7px; }
   .indicator-detail-backdrop { padding: 12px; }
