@@ -5,6 +5,8 @@ type GraphNode = {
   target?: HTMLElement
   x: number
   y: number
+  parentId?: string
+  expanded?: boolean
 }
 
 type GraphEdge = { source: GraphNode; target: GraphNode }
@@ -176,7 +178,7 @@ function renderGraph(detail: HTMLElement) {
   graphSection.className = 'spider-graph-section'
   graphSection.innerHTML = `
     <div class="spider-graph-heading">
-      <div><h3>Relationship viewer</h3><p>Drag to pan, scroll to zoom, and select any node to inspect it.</p></div>
+      <div><h3>Relationship viewer</h3><p>Drag to pan, scroll to zoom, select any node to inspect it, or expand neighbours.</p></div>
       <div class="spider-graph-actions">
         <label class="relationship-layout-control">Layout
           <select data-action="layout" aria-label="Relationship graph layout">
@@ -231,12 +233,22 @@ function renderGraph(detail: HTMLElement) {
   viewport.append(minimap)
 
   const center: GraphNode = { id: relationship.heading, label: relationship.heading, kind: 'control', x: 550, y: 350 }
-  const nodes = [center, ...relationship.rules, ...relationship.indicators, ...relationship.processes]
-  const edges: GraphEdge[] = nodes.slice(1).map((node) => ({ source: center, target: node }))
+  const baseNodes = [center, ...relationship.rules, ...relationship.indicators, ...relationship.processes]
+  const expandedNodes: GraphNode[] = []
+  const nodes = [...baseNodes]
+  const edges: GraphEdge[] = baseNodes.slice(1).map((node) => ({ source: center, target: node }))
   const edgeElements = new Map<string, SVGLineElement>()
   const nodeElements = new Map<string, SVGGElement>()
   const minimapEdges = new Map<string, SVGLineElement>()
   const minimapNodes = new Map<string, SVGCircleElement>()
+  let currentLayout: LayoutMode = 'radial'
+
+  let scale = 1
+  let translateX = 0
+  let translateY = 0
+  let dragging = false
+  let startX = 0
+  let startY = 0
 
   const updateMinimapViewport = () => {
     const x = -translateX / scale
@@ -247,7 +259,108 @@ function renderGraph(detail: HTMLElement) {
     minimapViewport.setAttribute('height', String(700 / scale))
   }
 
+  const applyTransform = () => {
+    scene.setAttribute('transform', `translate(${translateX} ${translateY}) scale(${scale})`)
+    updateMinimapViewport()
+  }
+
+  const centerOnControl = () => {
+    translateX = center.x * (1 - scale)
+    translateY = center.y * (1 - scale)
+  }
+
+  const fit = () => {
+    scale = 1
+    centerOnControl()
+    applyTransform()
+  }
+
+  const nodeById = (id: string) => nodes.find((item) => item.id === id)
+
+  const clearHighlight = () => {
+    scene.classList.remove('has-highlight')
+    nodeElements.forEach((element) => element.classList.remove('is-highlighted', 'is-connected', 'is-dimmed'))
+    edgeElements.forEach((element) => element.classList.remove('is-highlighted', 'is-dimmed'))
+  }
+
+  const highlightNode = (node: GraphNode) => {
+    clearHighlight()
+    scene.classList.add('has-highlight')
+
+    const connectedIds = new Set<string>([node.id])
+    edges.forEach((edge) => {
+      if (edge.source.id === node.id) connectedIds.add(edge.target.id)
+      if (edge.target.id === node.id) connectedIds.add(edge.source.id)
+    })
+
+    nodeElements.forEach((element, id) => {
+      if (id === node.id) element.classList.add('is-highlighted')
+      else if (connectedIds.has(id)) element.classList.add('is-connected')
+      else element.classList.add('is-dimmed')
+    })
+
+    edgeElements.forEach((element) => {
+      const sourceId = element.getAttribute('data-source-id')
+      const targetId = element.getAttribute('data-target-id')
+      const connected = sourceId === node.id || targetId === node.id
+      element.classList.add(connected ? 'is-highlighted' : 'is-dimmed')
+    })
+  }
+
+  const syncPositions = () => {
+    nodeElements.forEach((element, id) => {
+      const node = nodeById(id)
+      if (node) element.setAttribute('transform', `translate(${node.x} ${node.y})`)
+    })
+    minimapNodes.forEach((element, id) => {
+      const node = nodeById(id)
+      if (!node) return
+      element.setAttribute('cx', String(node.x))
+      element.setAttribute('cy', String(node.y))
+    })
+    edgeElements.forEach((element, key) => {
+      const edge = edges.find((item) => `${item.source.id}->${item.target.id}` === key)
+      if (!edge) return
+      element.setAttribute('x1', String(edge.source.x))
+      element.setAttribute('y1', String(edge.source.y))
+      element.setAttribute('x2', String(edge.target.x))
+      element.setAttribute('y2', String(edge.target.y))
+    })
+    minimapEdges.forEach((element, key) => {
+      const edge = edges.find((item) => `${item.source.id}->${item.target.id}` === key)
+      if (!edge) return
+      element.setAttribute('x1', String(edge.source.x))
+      element.setAttribute('y1', String(edge.source.y))
+      element.setAttribute('x2', String(edge.target.x))
+      element.setAttribute('y2', String(edge.target.y))
+    })
+  }
+
+  const positionExpandedNodes = () => {
+    const grouped = new Map<string, GraphNode[]>()
+    expandedNodes.forEach((node) => {
+      if (!node.parentId) return
+      const list = grouped.get(node.parentId) ?? []
+      list.push(node)
+      grouped.set(node.parentId, list)
+    })
+
+    grouped.forEach((children, parentId) => {
+      const parent = nodeById(parentId)
+      if (!parent) return
+      const baseAngle = Math.atan2(parent.y - center.y, parent.x - center.x)
+      children.forEach((child, index) => {
+        const spread = Math.PI / 2
+        const offset = children.length === 1 ? 0 : -spread / 2 + (spread * index) / (children.length - 1)
+        const radius = 105 + (index % 2) * 18
+        child.x = parent.x + Math.cos(baseAngle + offset) * radius
+        child.y = parent.y + Math.sin(baseAngle + offset) * radius
+      })
+    })
+  }
+
   const applyLayout = (layout: LayoutMode) => {
+    currentLayout = layout
     if (layout === 'radial') {
       center.x = 550
       center.y = 350
@@ -290,81 +403,59 @@ function renderGraph(detail: HTMLElement) {
         node.y = 350 + Math.sin(angle) * radius * 0.78
       })
     }
-
-    nodeElements.forEach((element, id) => {
-      const node = nodes.find((item) => item.id === id)
-      if (node) element.setAttribute('transform', `translate(${node.x} ${node.y})`)
-    })
-    minimapNodes.forEach((element, id) => {
-      const node = nodes.find((item) => item.id === id)
-      if (!node) return
-      element.setAttribute('cx', String(node.x))
-      element.setAttribute('cy', String(node.y))
-    })
-    edgeElements.forEach((element, id) => {
-      const node = nodes.find((item) => item.id === id)
-      if (!node) return
-      element.setAttribute('x1', String(center.x))
-      element.setAttribute('y1', String(center.y))
-      element.setAttribute('x2', String(node.x))
-      element.setAttribute('y2', String(node.y))
-    })
-    minimapEdges.forEach((element, id) => {
-      const node = nodes.find((item) => item.id === id)
-      if (!node) return
-      element.setAttribute('x1', String(center.x))
-      element.setAttribute('y1', String(center.y))
-      element.setAttribute('x2', String(node.x))
-      element.setAttribute('y2', String(node.y))
-    })
+    positionExpandedNodes()
+    syncPositions()
   }
 
-  edges.forEach(({ source, target }) => {
+  const createEdge = (source: GraphNode, target: GraphNode) => {
+    const key = `${source.id}->${target.id}`
+    if (edgeElements.has(key)) return
+    edges.push({ source, target })
+
     const edge = svgElement('line', {
       x1: String(source.x), y1: String(source.y), x2: String(target.x), y2: String(target.y), class: `spider-edge edge-${target.kind}`,
     })
     edge.setAttribute('data-source-id', source.id)
     edge.setAttribute('data-target-id', target.id)
-    edgeElements.set(target.id, edge)
-    scene.append(edge)
+    edgeElements.set(key, edge)
+    scene.insertBefore(edge, scene.firstChild)
 
     const minimapEdge = svgElement('line', {
       x1: String(source.x), y1: String(source.y), x2: String(target.x), y2: String(target.y), class: `spider-minimap-edge minimap-edge-${target.kind}`,
     })
-    minimapEdges.set(target.id, minimapEdge)
-    minimapScene.append(minimapEdge)
-  })
-
-  const clearHighlight = () => {
-    scene.classList.remove('has-highlight')
-    nodeElements.forEach((element) => element.classList.remove('is-highlighted', 'is-connected', 'is-dimmed'))
-    edgeElements.forEach((element) => element.classList.remove('is-highlighted', 'is-dimmed'))
+    minimapEdges.set(key, minimapEdge)
+    minimapScene.insertBefore(minimapEdge, minimapScene.firstChild)
   }
 
-  const highlightNode = (node: GraphNode) => {
-    clearHighlight()
-    scene.classList.add('has-highlight')
+  const removeExpandedChildren = (parentId: string) => {
+    const ids = expandedNodes.filter((node) => node.parentId === parentId).map((node) => node.id)
+    ids.forEach((id) => {
+      nodeElements.get(id)?.remove()
+      minimapNodes.get(id)?.remove()
+      nodeElements.delete(id)
+      minimapNodes.delete(id)
+      const nodeIndex = nodes.findIndex((node) => node.id === id)
+      if (nodeIndex >= 0) nodes.splice(nodeIndex, 1)
+      const expandedIndex = expandedNodes.findIndex((node) => node.id === id)
+      if (expandedIndex >= 0) expandedNodes.splice(expandedIndex, 1)
+    })
 
-    if (node.kind === 'control') {
-      nodeElements.forEach((element) => element.classList.add('is-connected'))
-      edgeElements.forEach((element) => element.classList.add('is-highlighted'))
-      return
+    for (let index = edges.length - 1; index >= 0; index -= 1) {
+      const edge = edges[index]
+      if (!ids.includes(edge.target.id)) continue
+      const key = `${edge.source.id}->${edge.target.id}`
+      edgeElements.get(key)?.remove()
+      minimapEdges.get(key)?.remove()
+      edgeElements.delete(key)
+      minimapEdges.delete(key)
+      edges.splice(index, 1)
     }
-
-    nodeElements.forEach((element, id) => {
-      if (id === node.id) element.classList.add('is-highlighted')
-      else if (id === center.id) element.classList.add('is-connected')
-      else element.classList.add('is-dimmed')
-    })
-
-    edgeElements.forEach((element, id) => {
-      element.classList.add(id === node.id ? 'is-highlighted' : 'is-dimmed')
-    })
   }
 
-  nodes.forEach((node) => {
-    const group = svgElement('g', { class: `spider-node node-${node.kind}`, tabindex: node.target ? '0' : '-1', transform: `translate(${node.x} ${node.y})` })
+  const createNodeElement = (node: GraphNode) => {
+    const group = svgElement('g', { class: `spider-node node-${node.kind}`, tabindex: '0', transform: `translate(${node.x} ${node.y})` })
     group.setAttribute('data-node-id', node.id)
+    if (node.parentId) group.classList.add('expanded-neighbour')
     const radius = node.kind === 'control' ? 62 : node.kind === 'process' ? 32 : 27
     group.append(svgElement('circle', { r: String(radius) }))
     const label = svgElement('text', { 'text-anchor': 'middle', y: node.kind === 'control' ? '5' : '4' })
@@ -376,12 +467,21 @@ function renderGraph(detail: HTMLElement) {
       group.append(subtitle)
     }
 
+    if (node.kind !== 'control') {
+      const expandBadge = svgElement('g', { class: 'spider-node-expand', role: 'button', tabindex: '0', 'aria-label': `${node.expanded ? 'Collapse' : 'Expand'} neighbours for ${node.id}` })
+      expandBadge.setAttribute('transform', 'translate(20 -20)')
+      expandBadge.append(svgElement('circle', { r: '10' }))
+      const plus = svgElement('text', { 'text-anchor': 'middle', y: '4' })
+      plus.textContent = node.expanded ? '−' : '+'
+      expandBadge.append(plus)
+      group.append(expandBadge)
+    }
+
     nodeElements.set(node.id, group)
     group.addEventListener('pointerenter', () => highlightNode(node))
     group.addEventListener('pointerleave', clearHighlight)
     group.addEventListener('focus', () => highlightNode(node))
     group.addEventListener('blur', clearHighlight)
-
     if (node.target) group.classList.add('clickable')
     scene.append(group)
 
@@ -393,24 +493,74 @@ function renderGraph(detail: HTMLElement) {
     })
     minimapNodes.set(node.id, minimapNode)
     minimapScene.append(minimapNode)
+  }
+
+  const neighbourCandidates = (node: GraphNode) => {
+    if (node.kind === 'rule') return relationship.processes.slice(0, 3)
+    if (node.kind === 'indicator') return relationship.rules.slice(0, 3)
+    if (node.kind === 'process') return relationship.rules.filter((item) => item.target?.textContent?.includes(node.id)).slice(0, 3)
+    return []
+  }
+
+  const toggleNeighbours = (node: GraphNode) => {
+    if (node.expanded) {
+      removeExpandedChildren(node.id)
+      node.expanded = false
+    } else {
+      const candidates = neighbourCandidates(node)
+      candidates.forEach((candidate, index) => {
+        const id = `${node.id}::${candidate.id}::${index}`
+        if (nodeById(id)) return
+        const child: GraphNode = {
+          id,
+          label: candidate.label,
+          kind: candidate.kind,
+          target: candidate.target,
+          x: node.x,
+          y: node.y,
+          parentId: node.id,
+        }
+        expandedNodes.push(child)
+        nodes.push(child)
+        createNodeElement(child)
+        createEdge(node, child)
+      })
+      node.expanded = true
+    }
+
+    const nodeElement = nodeElements.get(node.id)
+    const badgeText = nodeElement?.querySelector<SVGTextElement>('.spider-node-expand text')
+    const badge = nodeElement?.querySelector<SVGGElement>('.spider-node-expand')
+    if (badgeText) badgeText.textContent = node.expanded ? '−' : '+'
+    badge?.setAttribute('aria-label', `${node.expanded ? 'Collapse' : 'Expand'} neighbours for ${node.id}`)
+    applyLayout(currentLayout)
+  }
+
+  baseNodes.forEach((node) => createNodeElement(node))
+  baseNodes.slice(1).forEach((node) => createEdge(center, node))
+
+  scene.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : null
+    const badge = target?.closest<SVGGElement>('.spider-node-expand')
+    if (!badge) return
+    event.preventDefault()
+    event.stopPropagation()
+    const group = badge.closest<SVGGElement>('.spider-node')
+    const node = group ? nodeById(group.getAttribute('data-node-id') ?? '') : undefined
+    if (node) toggleNeighbours(node)
   })
 
-  let scale = 1
-  let translateX = 0
-  let translateY = 0
-  let dragging = false
-  let startX = 0
-  let startY = 0
-
-  const applyTransform = () => {
-    scene.setAttribute('transform', `translate(${translateX} ${translateY}) scale(${scale})`)
-    updateMinimapViewport()
-  }
-  const centerOnControl = () => {
-    translateX = center.x * (1 - scale)
-    translateY = center.y * (1 - scale)
-  }
-  const fit = () => { scale = 1; centerOnControl(); applyTransform() }
+  scene.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    const target = event.target instanceof Element ? event.target : null
+    const badge = target?.closest<SVGGElement>('.spider-node-expand')
+    if (!badge) return
+    event.preventDefault()
+    event.stopPropagation()
+    const group = badge.closest<SVGGElement>('.spider-node')
+    const node = group ? nodeById(group.getAttribute('data-node-id') ?? '') : undefined
+    if (node) toggleNeighbours(node)
+  })
 
   applyLayout('radial')
   applyTransform()
@@ -423,7 +573,7 @@ function renderGraph(detail: HTMLElement) {
   }, { passive: false })
   svg.addEventListener('pointerdown', (event) => {
     const target = event.target instanceof Element ? event.target : null
-    if (target?.closest('.spider-node.clickable')) return
+    if (target?.closest('.spider-node.clickable') || target?.closest('.spider-node-expand')) return
     dragging = true
     startX = event.clientX - translateX
     startY = event.clientY - translateY
