@@ -175,7 +175,7 @@ function renderGraph(detail: HTMLElement) {
   graphSection.className = 'spider-graph-section'
   graphSection.innerHTML = `
     <div class="spider-graph-heading">
-      <div><h3>Relationship viewer</h3><p>Drag to pan, scroll to zoom, and select a rule or indicator node to open it.</p></div>
+      <div><h3>Relationship viewer</h3><p>Drag to pan, scroll to zoom, and select any node to inspect it.</p></div>
       <div class="spider-graph-actions">
         <button class="secondary-button" type="button" data-action="fit">Fit to view</button>
         <button class="secondary-button" type="button" data-action="toggle">Hide graph</button>
@@ -218,12 +218,45 @@ function renderGraph(detail: HTMLElement) {
 
   const nodes = [center, ...relationship.rules, ...relationship.indicators, ...relationship.processes]
   const edges: GraphEdge[] = nodes.slice(1).map((node) => ({ source: center, target: node }))
+  const edgeElements = new Map<string, SVGLineElement>()
+  const nodeElements = new Map<string, SVGGElement>()
 
   edges.forEach(({ source, target }) => {
-    scene.append(svgElement('line', {
+    const edge = svgElement('line', {
       x1: String(source.x), y1: String(source.y), x2: String(target.x), y2: String(target.y), class: `spider-edge edge-${target.kind}`,
-    }))
+    })
+    edge.setAttribute('data-source-id', source.id)
+    edge.setAttribute('data-target-id', target.id)
+    edgeElements.set(target.id, edge)
+    scene.append(edge)
   })
+
+  const clearHighlight = () => {
+    scene.classList.remove('has-highlight')
+    nodeElements.forEach((element) => element.classList.remove('is-highlighted', 'is-connected', 'is-dimmed'))
+    edgeElements.forEach((element) => element.classList.remove('is-highlighted', 'is-dimmed'))
+  }
+
+  const highlightNode = (node: GraphNode) => {
+    clearHighlight()
+    scene.classList.add('has-highlight')
+
+    if (node.kind === 'control') {
+      nodeElements.forEach((element) => element.classList.add('is-connected'))
+      edgeElements.forEach((element) => element.classList.add('is-highlighted'))
+      return
+    }
+
+    nodeElements.forEach((element, id) => {
+      if (id === node.id) element.classList.add('is-highlighted')
+      else if (id === center.id) element.classList.add('is-connected')
+      else element.classList.add('is-dimmed')
+    })
+
+    edgeElements.forEach((element, id) => {
+      element.classList.add(id === node.id ? 'is-highlighted' : 'is-dimmed')
+    })
+  }
 
   nodes.forEach((node) => {
     const group = svgElement('g', { class: `spider-node node-${node.kind}`, tabindex: node.target ? '0' : '-1', transform: `translate(${node.x} ${node.y})` })
@@ -238,6 +271,13 @@ function renderGraph(detail: HTMLElement) {
       subtitle.textContent = 'Control'
       group.append(subtitle)
     }
+
+    nodeElements.set(node.id, group)
+    group.addEventListener('pointerenter', () => highlightNode(node))
+    group.addEventListener('pointerleave', clearHighlight)
+    group.addEventListener('focus', () => highlightNode(node))
+    group.addEventListener('blur', clearHighlight)
+
     if (node.target) {
       group.classList.add('clickable')
       const open = () => {
@@ -309,6 +349,9 @@ function renderGraph(detail: HTMLElement) {
   svg.addEventListener('pointercancel', (event) => {
     dragging = false
     if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId)
+  })
+  svg.addEventListener('pointerleave', () => {
+    if (!dragging) clearHighlight()
   })
 
   graphSection.querySelector<HTMLButtonElement>('[data-action="fit"]')?.addEventListener('click', fit)
