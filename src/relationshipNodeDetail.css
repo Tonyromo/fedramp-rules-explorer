@@ -5,7 +5,7 @@
 .relationship-breadcrumbs button:focus-visible { outline: 2px solid rgba(23, 105, 170, .35); outline-offset: 4px; border-radius: 3px; }
 .relationship-breadcrumbs span[aria-hidden="true"] { color: #9aa8b1; font-size: 1rem; }
 .relationship-breadcrumbs [aria-current="page"] { color: #253d4b; font-weight: 700; }
-.relationship-node-card { position: absolute; z-index: 12; width: min(340px, calc(100% - 32px)); padding: 18px; border: 1px solid #cdb9e4; border-radius: 14px; background: #fff; box-shadow: 0 18px 46px rgba(35, 24, 48, .24); cursor: default; }
+.relationship-node-card { position: absolute; z-index: 12; width: min(360px, calc(100% - 32px)); padding: 18px; border: 1px solid #cdb9e4; border-radius: 14px; background: #fff; box-shadow: 0 18px 46px rgba(35, 24, 48, .24); cursor: default; }
 .relationship-node-card-close { position: absolute; top: 9px; right: 10px; width: 30px; height: 30px; border: 0; border-radius: 50%; background: transparent; color: #687985; font-size: 1.35rem; line-height: 1; cursor: pointer; }
 .relationship-node-card-close:hover { background: #f1edf7; color: #4f2e79; }
 .relationship-node-card-type { display: block; margin-right: 32px; color: #7653a6; font-size: .72rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
@@ -17,6 +17,10 @@
 .relationship-node-card-rule .relationship-node-card-explanation { border-left-color: #2f8f46; background: #f4fbf5; }
 .relationship-node-card-indicator .relationship-node-card-explanation { border-left-color: #7a4db5; background: #faf7fd; }
 .relationship-node-card-process .relationship-node-card-explanation { border-left-color: #168b9d; background: #f2fbfc; }
+.relationship-node-card-reasoning { display: grid; gap: 10px; margin-top: 14px; padding-top: 13px; border-top: 1px solid #e4e9ec; }
+.relationship-node-card-reasoning > div { display: grid; gap: 3px; }
+.relationship-node-card-reasoning span { color: #687985; font-size: .69rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.relationship-node-card-reasoning p { margin: 0; color: #344e5d; font-size: .82rem; line-height: 1.45; }
 .relationship-node-card-actions { display: flex; justify-content: flex-end; margin-top: 16px; }
 .relationship-node-card-actions .primary-button { min-width: 132px; }
 .indicator-navigation-target { position: relative; z-index: 1; animation: indicator-target-pulse 2.6s ease-out; }
