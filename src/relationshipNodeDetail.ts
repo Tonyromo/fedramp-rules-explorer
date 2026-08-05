@@ -1,5 +1,6 @@
 const RETURN_CONTEXT_KEY = 'fedramp-rules-explorer:return-control'
 const CARD_CLASS = 'relationship-node-card'
+const NODE_BOUND = 'data-indicator-detail-bound'
 
 function escapeHtml(value: string) {
   return value.replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]!)
@@ -43,10 +44,13 @@ function openIndicatorPage(id: string, controlId: string) {
   window.setTimeout(locate, 0)
 }
 
-function showIndicatorCard(node: SVGGElement, id: string, focusAction = false) {
+function showIndicatorCard(node: SVGGElement, focusAction = false) {
   const detail = node.closest<HTMLElement>('.detail-page')
   const viewport = node.closest<HTMLElement>('.spider-graph-viewport')
   if (!detail || !viewport) return
+
+  const id = node.getAttribute('data-node-id') || node.querySelector('text')?.textContent?.trim() || ''
+  if (!id) return
 
   const row = findIndicatorRow(detail, id)
   const statement = row?.querySelector('span')?.textContent?.trim() || 'No statement supplied.'
@@ -73,16 +77,45 @@ function showIndicatorCard(node: SVGGElement, id: string, focusAction = false) {
   const nodeRect = node.getBoundingClientRect()
   const maxLeft = Math.max(16, viewportRect.width - 356)
   const maxTop = Math.max(16, viewportRect.height - 250)
-  const left = Math.min(Math.max(nodeRect.left - viewportRect.left + nodeRect.width + 14, 16), maxLeft)
-  const top = Math.min(Math.max(nodeRect.top - viewportRect.top - 12, 16), maxTop)
-  card.style.left = `${left}px`
-  card.style.top = `${top}px`
+  card.style.left = `${Math.min(Math.max(nodeRect.left - viewportRect.left + nodeRect.width + 14, 16), maxLeft)}px`
+  card.style.top = `${Math.min(Math.max(nodeRect.top - viewportRect.top - 12, 16), maxTop)}px`
 
   card.querySelector<HTMLButtonElement>('.relationship-node-card-close')?.addEventListener('click', () => removeCard(viewport))
   card.querySelector<HTMLButtonElement>('[data-open-indicator]')?.addEventListener('click', () => openIndicatorPage(id, controlId))
   viewport.append(card)
 
   if (focusAction) card.querySelector<HTMLButtonElement>('[data-open-indicator]')?.focus()
+}
+
+function bindIndicatorNodes(root: ParentNode = document) {
+  root.querySelectorAll<SVGGElement>('.spider-node.node-indicator').forEach((node) => {
+    if (node.hasAttribute(NODE_BOUND)) return
+    node.setAttribute(NODE_BOUND, 'true')
+    node.style.pointerEvents = 'all'
+
+    let startX = 0
+    let startY = 0
+
+    node.addEventListener('pointerdown', (event) => {
+      startX = event.clientX
+      startY = event.clientY
+    }, true)
+
+    node.addEventListener('pointerup', (event) => {
+      const moved = Math.hypot(event.clientX - startX, event.clientY - startY)
+      if (moved > 6) return
+      event.preventDefault()
+      event.stopPropagation()
+      showIndicatorCard(node)
+    }, true)
+
+    node.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return
+      event.preventDefault()
+      event.stopPropagation()
+      showIndicatorCard(node, true)
+    }, true)
+  })
 }
 
 function addReturnButton() {
@@ -118,38 +151,8 @@ function addReturnButton() {
 }
 
 export function installRelationshipNodeDetail() {
-  document.addEventListener('relationship-indicator-select', (event) => {
-    const customEvent = event as CustomEvent<{ id?: string }>
-    const node = customEvent.target instanceof Element
-      ? customEvent.target.closest<SVGGElement>('.spider-node.node-indicator')
-      : null
-    const id = customEvent.detail?.id || node?.getAttribute('data-node-id') || ''
-    if (!node || !id) return
-    showIndicatorCard(node, id)
-  })
-
-  document.addEventListener('click', (event) => {
-    if (!(event.target instanceof Element)) return
-    const node = event.target.closest<SVGGElement>('.spider-node.node-indicator')
-    if (!node) return
-    const id = node.getAttribute('data-node-id') || node.querySelector('text')?.textContent?.trim() || ''
-    if (!id) return
-    event.preventDefault()
-    event.stopImmediatePropagation()
-    showIndicatorCard(node, id)
-  }, true)
-
-  document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Enter' && event.key !== ' ') return
-    if (!(event.target instanceof Element)) return
-    const node = event.target.closest<SVGGElement>('.spider-node.node-indicator')
-    if (!node) return
-    const id = node.getAttribute('data-node-id') || node.querySelector('text')?.textContent?.trim() || ''
-    if (!id) return
-    event.preventDefault()
-    event.stopImmediatePropagation()
-    showIndicatorCard(node, id, true)
-  }, true)
+  bindIndicatorNodes()
+  addReturnButton()
 
   document.addEventListener('click', (event) => {
     if (!(event.target instanceof Element)) return
@@ -158,7 +161,16 @@ export function installRelationshipNodeDetail() {
     removeCard(viewport)
   })
 
-  const observer = new MutationObserver(addReturnButton)
+  const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      mutation.addedNodes.forEach((node) => {
+        if (!(node instanceof Element)) return
+        if (node.matches('.spider-node.node-indicator')) bindIndicatorNodes(node.parentNode ?? document)
+        else bindIndicatorNodes(node)
+      })
+    }
+    addReturnButton()
+  })
+
   observer.observe(document.body, { childList: true, subtree: true })
-  addReturnButton()
 }
