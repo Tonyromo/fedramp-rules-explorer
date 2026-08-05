@@ -1,11 +1,6 @@
 const INDICATOR_HIGHLIGHT_CLASS = 'indicator-navigation-target'
 
 function findIndicatorId(target: Element): string | null {
-  const graphNode = target.closest<SVGGElement>('.spider-node.node-indicator')
-  if (graphNode) {
-    return graphNode.querySelector('text')?.textContent?.trim() ?? null
-  }
-
   const indicatorRow = target.closest<HTMLElement>('#referenced-indicators-panel .relationship-table-row')
   if (indicatorRow) {
     return indicatorRow.querySelector('code')?.textContent?.trim() ?? null
