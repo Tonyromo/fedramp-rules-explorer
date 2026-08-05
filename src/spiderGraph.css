@@ -63,6 +63,13 @@
 .spider-node.is-dimmed { opacity: .18; }
 .spider-edge.is-highlighted { opacity: 1; stroke-width: 4; filter: drop-shadow(0 2px 3px rgba(24, 45, 58, .22)); }
 .spider-edge.is-dimmed { opacity: .1; }
+.spider-node-expand { cursor: pointer; }
+.spider-node-expand circle { fill: #1769aa; stroke: #fff; stroke-width: 2; filter: drop-shadow(0 2px 3px rgba(24,45,58,.2)); }
+.spider-node-expand text { fill: #fff; font-size: 14px; font-weight: 900; pointer-events: none; }
+.spider-node-expand:hover circle, .spider-node-expand:focus circle { fill: #12598f; stroke-width: 3; }
+.spider-node-expand:focus { outline: none; }
+.spider-node.expanded-neighbour circle { stroke-dasharray: 4 3; }
+.spider-node.expanded-neighbour text { font-size: 11px; }
 
 .relationship-table { display: grid; width: 100%; gap: 0; overflow: hidden; border: 1px solid #dce3e7; border-radius: 10px; }
 .relationship-table-header, .relationship-table-row { display: grid !important; grid-template-columns: minmax(110px, .7fr) minmax(280px, 2.3fr) minmax(130px, .8fr); align-items: start; gap: 18px; width: 100%; }
