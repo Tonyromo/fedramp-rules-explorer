@@ -227,6 +227,7 @@ function renderGraph(detail: HTMLElement) {
 
   nodes.forEach((node) => {
     const group = svgElement('g', { class: `spider-node node-${node.kind}`, tabindex: node.target ? '0' : '-1', transform: `translate(${node.x} ${node.y})` })
+    group.setAttribute('data-node-id', node.id)
     const radius = node.kind === 'control' ? 62 : node.kind === 'process' ? 32 : 27
     group.append(svgElement('circle', { r: String(radius) }))
     const label = svgElement('text', { 'text-anchor': 'middle', y: node.kind === 'control' ? '5' : '4' })
@@ -239,11 +240,25 @@ function renderGraph(detail: HTMLElement) {
     }
     if (node.target) {
       group.classList.add('clickable')
-      const open = () => node.target?.click()
-      group.addEventListener('click', open)
+      const open = () => {
+        if (node.kind === 'indicator') {
+          group.dispatchEvent(new CustomEvent('relationship-indicator-select', {
+            bubbles: true,
+            composed: true,
+            detail: { id: node.id },
+          }))
+          return
+        }
+        node.target?.click()
+      }
+      group.addEventListener('click', (event) => {
+        event.stopPropagation()
+        open()
+      })
       group.addEventListener('keydown', (event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()
+          event.stopPropagation()
           open()
         }
       })
