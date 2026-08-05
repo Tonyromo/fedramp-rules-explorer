@@ -39,6 +39,7 @@ function openIndicatorPage(id: string, controlId: string) {
     card.classList.add('indicator-navigation-target')
     card.scrollIntoView({ behavior: 'smooth', block: 'center' })
     window.setTimeout(() => card.classList.remove('indicator-navigation-target'), 2600)
+    addReturnButton()
   }
 
   window.setTimeout(locate, 0)
@@ -118,35 +119,61 @@ function bindIndicatorNodes(root: ParentNode = document) {
   })
 }
 
+function indicatorPageIsVisible() {
+  return Array.from(document.querySelectorAll<HTMLElement>('.record-card code'))
+    .some((code) => code.textContent?.trim().startsWith('KSI-'))
+}
+
+function returnToControl(controlId: string) {
+  document.querySelector('[data-return-control]')?.remove()
+  sidebarButton('Controls')?.click()
+
+  let attempts = 0
+  const locate = () => {
+    attempts += 1
+    const control = Array.from(document.querySelectorAll<HTMLButtonElement>('.control-card'))
+      .find((item) => item.querySelector('code')?.textContent?.trim() === controlId)
+
+    if (!control && attempts < 40) {
+      window.setTimeout(locate, 50)
+      return
+    }
+
+    if (!control) return
+    control.click()
+    sessionStorage.removeItem(RETURN_CONTEXT_KEY)
+
+    window.setTimeout(() => {
+      const viewerTab = Array.from(document.querySelectorAll<HTMLButtonElement>('.relationship-tab'))
+        .find((button) => button.textContent?.trim() === 'Relationship Viewer')
+      viewerTab?.click()
+      document.querySelector('.relationship-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 100)
+  }
+
+  window.setTimeout(locate, 0)
+}
+
 function addReturnButton() {
   const controlId = sessionStorage.getItem(RETURN_CONTEXT_KEY)
-  if (!controlId || !sidebarButton('Indicators')?.classList.contains('active')) return
+  const existing = document.querySelector<HTMLElement>('[data-return-control]')
+
+  if (!controlId || !indicatorPageIsVisible()) {
+    existing?.remove()
+    return
+  }
+
+  if (existing) return
 
   const topbar = document.querySelector<HTMLElement>('.topbar')
-  if (!topbar || topbar.querySelector('[data-return-control]')) return
+  if (!topbar) return
 
   const button = document.createElement('button')
   button.type = 'button'
   button.className = 'secondary-button indicator-return-button'
   button.setAttribute('data-return-control', 'true')
   button.textContent = `Back to ${controlId}`
-  button.addEventListener('click', () => {
-    sessionStorage.removeItem(RETURN_CONTEXT_KEY)
-    sidebarButton('Controls')?.click()
-
-    let attempts = 0
-    const locate = () => {
-      attempts += 1
-      const control = Array.from(document.querySelectorAll<HTMLButtonElement>('.control-card'))
-        .find((item) => item.querySelector('code')?.textContent?.trim() === controlId)
-      if (!control && attempts < 30) {
-        window.setTimeout(locate, 50)
-        return
-      }
-      control?.click()
-    }
-    window.setTimeout(locate, 0)
-  })
+  button.addEventListener('click', () => returnToControl(controlId))
   topbar.append(button)
 }
 
