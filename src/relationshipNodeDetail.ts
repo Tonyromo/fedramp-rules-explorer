@@ -43,13 +43,10 @@ function openIndicatorPage(id: string, controlId: string) {
   window.setTimeout(locate, 0)
 }
 
-function showIndicatorCard(node: SVGGElement, event: MouseEvent | KeyboardEvent) {
+function showIndicatorCard(node: SVGGElement, id: string, focusAction = false) {
   const detail = node.closest<HTMLElement>('.detail-page')
   const viewport = node.closest<HTMLElement>('.spider-graph-viewport')
   if (!detail || !viewport) return
-
-  const id = node.querySelector('text')?.textContent?.trim()
-  if (!id) return
 
   const row = findIndicatorRow(detail, id)
   const statement = row?.querySelector('span')?.textContent?.trim() || 'No statement supplied.'
@@ -74,8 +71,10 @@ function showIndicatorCard(node: SVGGElement, event: MouseEvent | KeyboardEvent)
 
   const viewportRect = viewport.getBoundingClientRect()
   const nodeRect = node.getBoundingClientRect()
-  const left = Math.min(Math.max(nodeRect.left - viewportRect.left + nodeRect.width + 14, 16), viewportRect.width - 356)
-  const top = Math.min(Math.max(nodeRect.top - viewportRect.top - 12, 16), viewportRect.height - 250)
+  const maxLeft = Math.max(16, viewportRect.width - 356)
+  const maxTop = Math.max(16, viewportRect.height - 250)
+  const left = Math.min(Math.max(nodeRect.left - viewportRect.left + nodeRect.width + 14, 16), maxLeft)
+  const top = Math.min(Math.max(nodeRect.top - viewportRect.top - 12, 16), maxTop)
   card.style.left = `${left}px`
   card.style.top = `${top}px`
 
@@ -83,7 +82,7 @@ function showIndicatorCard(node: SVGGElement, event: MouseEvent | KeyboardEvent)
   card.querySelector<HTMLButtonElement>('[data-open-indicator]')?.addEventListener('click', () => openIndicatorPage(id, controlId))
   viewport.append(card)
 
-  if (event instanceof KeyboardEvent) card.querySelector<HTMLButtonElement>('[data-open-indicator]')?.focus()
+  if (focusAction) card.querySelector<HTMLButtonElement>('[data-open-indicator]')?.focus()
 }
 
 function addReturnButton() {
@@ -119,13 +118,25 @@ function addReturnButton() {
 }
 
 export function installRelationshipNodeDetail() {
+  document.addEventListener('relationship-indicator-select', (event) => {
+    const customEvent = event as CustomEvent<{ id?: string }>
+    const node = customEvent.target instanceof Element
+      ? customEvent.target.closest<SVGGElement>('.spider-node.node-indicator')
+      : null
+    const id = customEvent.detail?.id || node?.getAttribute('data-node-id') || ''
+    if (!node || !id) return
+    showIndicatorCard(node, id)
+  })
+
   document.addEventListener('click', (event) => {
     if (!(event.target instanceof Element)) return
     const node = event.target.closest<SVGGElement>('.spider-node.node-indicator')
     if (!node) return
+    const id = node.getAttribute('data-node-id') || node.querySelector('text')?.textContent?.trim() || ''
+    if (!id) return
     event.preventDefault()
     event.stopImmediatePropagation()
-    showIndicatorCard(node, event)
+    showIndicatorCard(node, id)
   }, true)
 
   document.addEventListener('keydown', (event) => {
@@ -133,9 +144,11 @@ export function installRelationshipNodeDetail() {
     if (!(event.target instanceof Element)) return
     const node = event.target.closest<SVGGElement>('.spider-node.node-indicator')
     if (!node) return
+    const id = node.getAttribute('data-node-id') || node.querySelector('text')?.textContent?.trim() || ''
+    if (!id) return
     event.preventDefault()
     event.stopImmediatePropagation()
-    showIndicatorCard(node, event)
+    showIndicatorCard(node, id, true)
   }, true)
 
   document.addEventListener('click', (event) => {
