@@ -190,6 +190,7 @@ function renderGraph(detail: HTMLElement) {
             <option value="force">Force</option>
           </select>
         </label>
+        <button class="secondary-button" type="button" data-action="clear-pins" hidden>Clear pins</button>
         <button class="secondary-button" type="button" data-action="fit">Fit to view</button>
         <button class="secondary-button" type="button" data-action="toggle">Hide graph</button>
       </div>
@@ -242,6 +243,7 @@ function renderGraph(detail: HTMLElement) {
   const nodeElements = new Map<string, SVGGElement>()
   const minimapEdges = new Map<string, SVGLineElement>()
   const minimapNodes = new Map<string, SVGCircleElement>()
+  const pinnedPositions = new Map<string, { x: number; y: number }>()
 
   let scale = 1
   let translateX = 0
@@ -249,6 +251,17 @@ function renderGraph(detail: HTMLElement) {
   let dragging = false
   let startX = 0
   let startY = 0
+  let draggingNode: GraphNode | null = null
+  let nodeStartX = 0
+  let nodeStartY = 0
+  let nodePointerStartX = 0
+  let nodePointerStartY = 0
+
+  const clearPinsButton = graphSection.querySelector<HTMLButtonElement>('[data-action="clear-pins"]')!
+
+  const updatePinControls = () => {
+    clearPinsButton.hidden = pinnedPositions.size === 0
+  }
 
   const updateMinimapViewport = () => {
     const x = -translateX / scale
@@ -282,6 +295,50 @@ function renderGraph(detail: HTMLElement) {
     applyTransform()
     nodeElements.get(node.id)?.focus()
   }
+
+  const syncNodePosition = (node: GraphNode) => {
+    nodeElements.get(node.id)?.setAttribute('transform', `translate(${node.x} ${node.y})`)
+    const minimapNode = minimapNodes.get(node.id)
+    minimapNode?.setAttribute('cx', String(node.x))
+    minimapNode?.setAttribute('cy', String(node.y))
+    edgeElements.forEach((element, id) => {
+      if (id !== node.id && node.kind !== 'control') return
+      const target = nodes.find((item) => item.id === id)
+      if (!target) return
+      element.setAttribute('x1', String(center.x))
+      element.setAttribute('y1', String(center.y))
+      element.setAttribute('x2', String(target.x))
+      element.setAttribute('y2', String(target.y))
+    })
+    minimapEdges.forEach((element, id) => {
+      if (id !== node.id && node.kind !== 'control') return
+      const target = nodes.find((item) => item.id === id)
+      if (!target) return
+      element.setAttribute('x1', String(center.x))
+      element.setAttribute('y1', String(center.y))
+      element.setAttribute('x2', String(target.x))
+      element.setAttribute('y2', String(target.y))
+    })
+  }
+
+  const setPinned = (node: GraphNode, pinned: boolean) => {
+    const element = nodeElements.get(node.id)
+    const minimapNode = minimapNodes.get(node.id)
+    if (pinned) {
+      pinnedPositions.set(node.id, { x: node.x, y: node.y })
+      element?.classList.add('is-pinned')
+      minimapNode?.classList.add('is-pinned')
+      element?.setAttribute('aria-label', `${node.id}, pinned node`)
+    } else {
+      pinnedPositions.delete(node.id)
+      element?.classList.remove('is-pinned')
+      minimapNode?.classList.remove('is-pinned')
+      element?.setAttribute('aria-label', `View relationship details for ${node.id}`)
+    }
+    updatePinControls()
+  }
+
+  const togglePinned = (node: GraphNode) => setPinned(node, !pinnedPositions.has(node.id))
 
   const clearHighlight = () => {
     scene.classList.remove('has-highlight')
@@ -385,6 +442,14 @@ function renderGraph(detail: HTMLElement) {
       })
     }
 
+    pinnedPositions.forEach((position, id) => {
+      const node = nodes.find((item) => item.id === id)
+      if (node) {
+        node.x = position.x
+        node.y = position.y
+      }
+    })
+
     nodeElements.forEach((element, id) => {
       const node = nodes.find((item) => item.id === id)
       if (node) element.setAttribute('transform', `translate(${node.x} ${node.y})`)
@@ -432,6 +497,7 @@ function renderGraph(detail: HTMLElement) {
   nodes.forEach((node) => {
     const group = svgElement('g', { class: `spider-node node-${node.kind}`, tabindex: '0', transform: `translate(${node.x} ${node.y})` })
     group.setAttribute('data-node-id', node.id)
+    group.setAttribute('aria-label', `View relationship details for ${node.id}`)
     const radius = node.kind === 'control' ? 62 : node.kind === 'process' ? 32 : 27
     group.append(svgElement('circle', { r: String(radius) }))
     const label = svgElement('text', { 'text-anchor': 'middle', y: node.kind === 'control' ? '5' : '4' })
@@ -443,6 +509,26 @@ function renderGraph(detail: HTMLElement) {
       group.append(subtitle)
     }
 
+    const pinBadge = svgElement('g', { class: 'spider-node-pin', role: 'button', tabindex: '0', 'aria-label': `Pin ${node.id}` })
+    pinBadge.setAttribute('transform', `translate(${node.kind === 'control' ? 48 : 22} ${node.kind === 'control' ? -48 : -22})`)
+    pinBadge.append(svgElement('circle', { r: '10' }))
+    const pinText = svgElement('text', { 'text-anchor': 'middle', y: '4' })
+    pinText.textContent = '•'
+    pinBadge.append(pinText)
+    group.append(pinBadge)
+
+    const activatePin = (event: Event) => {
+      event.preventDefault()
+      event.stopPropagation()
+      togglePinned(node)
+      pinBadge.setAttribute('aria-label', `${pinnedPositions.has(node.id) ? 'Unpin' : 'Pin'} ${node.id}`)
+    }
+    pinBadge.addEventListener('click', activatePin)
+    pinBadge.addEventListener('pointerup', activatePin)
+    pinBadge.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') activatePin(event)
+    })
+
     nodeElements.set(node.id, group)
     group.addEventListener('pointerenter', () => highlightNode(node))
     group.addEventListener('pointerleave', clearHighlight)
@@ -450,6 +536,20 @@ function renderGraph(detail: HTMLElement) {
     group.addEventListener('blur', clearHighlight)
     if (node.target) group.classList.add('clickable')
     scene.append(group)
+
+    group.addEventListener('pointerdown', (event) => {
+      const target = event.target instanceof Element ? event.target : null
+      if (target?.closest('.spider-node-pin')) return
+      if (!pinnedPositions.has(node.id)) return
+      draggingNode = node
+      nodePointerStartX = event.clientX
+      nodePointerStartY = event.clientY
+      nodeStartX = node.x
+      nodeStartY = node.y
+      event.preventDefault()
+      event.stopPropagation()
+      svg.setPointerCapture(event.pointerId)
+    }, true)
 
     const minimapNode = svgElement('circle', {
       cx: String(node.x),
@@ -463,6 +563,7 @@ function renderGraph(detail: HTMLElement) {
 
   applyLayout('radial')
   applyTransform()
+  updatePinControls()
 
   svg.addEventListener('wheel', (event) => {
     event.preventDefault()
@@ -472,29 +573,42 @@ function renderGraph(detail: HTMLElement) {
   }, { passive: false })
   svg.addEventListener('pointerdown', (event) => {
     const target = event.target instanceof Element ? event.target : null
-    if (target?.closest('.spider-node.clickable')) return
+    if (target?.closest('.spider-node.clickable') || target?.closest('.spider-node-pin')) return
     dragging = true
     startX = event.clientX - translateX
     startY = event.clientY - translateY
     svg.setPointerCapture(event.pointerId)
   })
   svg.addEventListener('pointermove', (event) => {
+    if (draggingNode) {
+      draggingNode.x = nodeStartX + (event.clientX - nodePointerStartX) / scale
+      draggingNode.y = nodeStartY + (event.clientY - nodePointerStartY) / scale
+      pinnedPositions.set(draggingNode.id, { x: draggingNode.x, y: draggingNode.y })
+      syncNodePosition(draggingNode)
+      return
+    }
     if (!dragging) return
     translateX = event.clientX - startX
     translateY = event.clientY - startY
     applyTransform()
   })
   svg.addEventListener('pointerup', (event) => {
+    if (draggingNode) {
+      draggingNode = null
+      if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId)
+      return
+    }
     if (!dragging) return
     dragging = false
     if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId)
   })
   svg.addEventListener('pointercancel', (event) => {
+    draggingNode = null
     dragging = false
     if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId)
   })
   svg.addEventListener('pointerleave', () => {
-    if (!dragging) clearHighlight()
+    if (!dragging && !draggingNode) clearHighlight()
   })
 
   minimapSvg.addEventListener('click', (event) => {
@@ -520,11 +634,19 @@ function renderGraph(detail: HTMLElement) {
     applySearch('')
     searchInput.focus()
   })
-
+  clearPinsButton.addEventListener('click', () => {
+    pinnedPositions.clear()
+    nodes.forEach((node) => {
+      nodeElements.get(node.id)?.classList.remove('is-pinned')
+      minimapNodes.get(node.id)?.classList.remove('is-pinned')
+      nodeElements.get(node.id)?.setAttribute('aria-label', `View relationship details for ${node.id}`)
+    })
+    applyLayout((graphSection.querySelector<HTMLSelectElement>('[data-action="layout"]')?.value ?? 'radial') as LayoutMode)
+    updatePinControls()
+  })
   graphSection.querySelector<HTMLSelectElement>('[data-action="layout"]')?.addEventListener('change', (event) => {
     applyLayout((event.currentTarget as HTMLSelectElement).value as LayoutMode)
     fit()
-    applySearch(searchInput.value)
   })
   graphSection.querySelector<HTMLButtonElement>('[data-action="fit"]')?.addEventListener('click', fit)
   graphSection.querySelector<HTMLButtonElement>('[data-action="toggle"]')?.addEventListener('click', (event) => {
@@ -532,7 +654,6 @@ function renderGraph(detail: HTMLElement) {
     const hidden = viewport.hidden
     viewport.hidden = !hidden
     graphSection.querySelector<HTMLElement>('.spider-legend')!.hidden = !hidden
-    graphSection.querySelector<HTMLElement>('[data-search-status]')!.hidden = !hidden
     button.textContent = hidden ? 'Hide graph' : 'Show graph'
   })
 }
