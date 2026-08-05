@@ -3,7 +3,7 @@ const CARD_CLASS = 'relationship-node-card'
 const NODE_BOUND = 'data-indicator-detail-bound'
 
 function escapeHtml(value: string) {
-  return value.replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]!)
+  return value.replace(/[&<>'\"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]!)
 }
 
 function sidebarButton(label: string) {
@@ -163,18 +163,19 @@ function addReturnButton() {
     return
   }
 
-  if (existing) return
-
-  const topbar = document.querySelector<HTMLElement>('.topbar')
-  if (!topbar) return
+  if (existing) {
+    existing.querySelector('[data-return-control-label]')!.textContent = `Return to ${controlId}`
+    return
+  }
 
   const button = document.createElement('button')
   button.type = 'button'
-  button.className = 'secondary-button indicator-return-button'
+  button.className = 'indicator-return-button'
   button.setAttribute('data-return-control', 'true')
-  button.textContent = `Back to ${controlId}`
+  button.setAttribute('aria-label', `Return to control ${controlId}`)
+  button.innerHTML = `<span aria-hidden="true">←</span><span data-return-control-label>Return to ${escapeHtml(controlId)}</span>`
   button.addEventListener('click', () => returnToControl(controlId))
-  topbar.append(button)
+  document.body.append(button)
 }
 
 export function installRelationshipNodeDetail() {
