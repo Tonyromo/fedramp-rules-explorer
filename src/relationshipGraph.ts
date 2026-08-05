@@ -236,7 +236,7 @@ function renderGraph(detail: HTMLElement) {
   const baseNodes = [center, ...relationship.rules, ...relationship.indicators, ...relationship.processes]
   const expandedNodes: GraphNode[] = []
   const nodes = [...baseNodes]
-  const edges: GraphEdge[] = baseNodes.slice(1).map((node) => ({ source: center, target: node }))
+  const edges: GraphEdge[] = []
   const edgeElements = new Map<string, SVGLineElement>()
   const nodeElements = new Map<string, SVGGElement>()
   const minimapEdges = new Map<string, SVGLineElement>()
@@ -352,7 +352,7 @@ function renderGraph(detail: HTMLElement) {
       children.forEach((child, index) => {
         const spread = Math.PI / 2
         const offset = children.length === 1 ? 0 : -spread / 2 + (spread * index) / (children.length - 1)
-        const radius = 105 + (index % 2) * 18
+        const radius = 92 + (index % 2) * 14
         child.x = parent.x + Math.cos(baseAngle + offset) * radius
         child.y = parent.y + Math.sin(baseAngle + offset) * radius
       })
@@ -364,9 +364,9 @@ function renderGraph(detail: HTMLElement) {
     if (layout === 'radial') {
       center.x = 550
       center.y = 350
-      distribute(relationship.rules, 280, 250, Math.min(190, 75 + relationship.rules.length * 7), -Math.PI / 2)
-      distribute(relationship.indicators, 820, 245, Math.min(170, 80 + relationship.indicators.length * 9), -Math.PI / 2)
-      distribute(relationship.processes, 720, 535, Math.min(125, 70 + relationship.processes.length * 12), Math.PI / 2)
+      distribute(relationship.rules, 285, 260, Math.min(170, 72 + relationship.rules.length * 6), -Math.PI / 2)
+      distribute(relationship.indicators, 815, 250, Math.min(165, 78 + relationship.indicators.length * 8), -Math.PI / 2)
+      distribute(relationship.processes, 710, 525, Math.min(115, 64 + relationship.processes.length * 10), Math.PI / 2)
     } else if (layout === 'hierarchical') {
       center.x = 550
       center.y = 100
@@ -452,54 +452,19 @@ function renderGraph(detail: HTMLElement) {
     }
   }
 
-  const createNodeElement = (node: GraphNode) => {
-    const group = svgElement('g', { class: `spider-node node-${node.kind}`, tabindex: '0', transform: `translate(${node.x} ${node.y})` })
-    group.setAttribute('data-node-id', node.id)
-    if (node.parentId) group.classList.add('expanded-neighbour')
-    const radius = node.kind === 'control' ? 62 : node.kind === 'process' ? 32 : 27
-    group.append(svgElement('circle', { r: String(radius) }))
-    const label = svgElement('text', { 'text-anchor': 'middle', y: node.kind === 'control' ? '5' : '4' })
-    label.textContent = node.label.length > 17 ? `${node.label.slice(0, 15)}…` : node.label
-    group.append(label)
-    if (node.kind === 'control') {
-      const subtitle = svgElement('text', { 'text-anchor': 'middle', y: '25', class: 'node-subtitle' })
-      subtitle.textContent = 'Control'
-      group.append(subtitle)
-    }
-
-    if (node.kind !== 'control') {
-      const expandBadge = svgElement('g', { class: 'spider-node-expand', role: 'button', tabindex: '0', 'aria-label': `${node.expanded ? 'Collapse' : 'Expand'} neighbours for ${node.id}` })
-      expandBadge.setAttribute('transform', 'translate(20 -20)')
-      expandBadge.append(svgElement('circle', { r: '10' }))
-      const plus = svgElement('text', { 'text-anchor': 'middle', y: '4' })
-      plus.textContent = node.expanded ? '−' : '+'
-      expandBadge.append(plus)
-      group.append(expandBadge)
-    }
-
-    nodeElements.set(node.id, group)
-    group.addEventListener('pointerenter', () => highlightNode(node))
-    group.addEventListener('pointerleave', clearHighlight)
-    group.addEventListener('focus', () => highlightNode(node))
-    group.addEventListener('blur', clearHighlight)
-    if (node.target) group.classList.add('clickable')
-    scene.append(group)
-
-    const minimapNode = svgElement('circle', {
-      cx: String(node.x),
-      cy: String(node.y),
-      r: node.kind === 'control' ? '34' : node.kind === 'process' ? '15' : '13',
-      class: `spider-minimap-node minimap-node-${node.kind}`,
-    })
-    minimapNodes.set(node.id, minimapNode)
-    minimapScene.append(minimapNode)
-  }
-
   const neighbourCandidates = (node: GraphNode) => {
     if (node.kind === 'rule') return relationship.processes.slice(0, 3)
     if (node.kind === 'indicator') return relationship.rules.slice(0, 3)
     if (node.kind === 'process') return relationship.rules.filter((item) => item.target?.textContent?.includes(node.id)).slice(0, 3)
     return []
+  }
+
+  const updateExpandBadge = (node: GraphNode) => {
+    const nodeElement = nodeElements.get(node.id)
+    const badgeText = nodeElement?.querySelector<SVGTextElement>('.spider-node-expand text')
+    const badge = nodeElement?.querySelector<SVGGElement>('.spider-node-expand')
+    if (badgeText) badgeText.textContent = node.expanded ? '−' : '+'
+    badge?.setAttribute('aria-label', `${node.expanded ? 'Collapse' : 'Expand'} neighbours for ${node.id}`)
   }
 
   const toggleNeighbours = (node: GraphNode) => {
@@ -528,39 +493,67 @@ function renderGraph(detail: HTMLElement) {
       node.expanded = true
     }
 
-    const nodeElement = nodeElements.get(node.id)
-    const badgeText = nodeElement?.querySelector<SVGTextElement>('.spider-node-expand text')
-    const badge = nodeElement?.querySelector<SVGGElement>('.spider-node-expand')
-    if (badgeText) badgeText.textContent = node.expanded ? '−' : '+'
-    badge?.setAttribute('aria-label', `${node.expanded ? 'Collapse' : 'Expand'} neighbours for ${node.id}`)
-    applyLayout(currentLayout)
+    updateExpandBadge(node)
+    positionExpandedNodes()
+    syncPositions()
+  }
+
+  const createNodeElement = (node: GraphNode) => {
+    const group = svgElement('g', { class: `spider-node node-${node.kind}`, tabindex: '0', transform: `translate(${node.x} ${node.y})` })
+    group.setAttribute('data-node-id', node.id)
+    if (node.parentId) group.classList.add('expanded-neighbour')
+    const radius = node.kind === 'control' ? 62 : node.kind === 'process' ? 32 : 27
+    group.append(svgElement('circle', { r: String(radius) }))
+    const label = svgElement('text', { 'text-anchor': 'middle', y: node.kind === 'control' ? '5' : '4' })
+    label.textContent = node.label.length > 17 ? `${node.label.slice(0, 15)}…` : node.label
+    group.append(label)
+    if (node.kind === 'control') {
+      const subtitle = svgElement('text', { 'text-anchor': 'middle', y: '25', class: 'node-subtitle' })
+      subtitle.textContent = 'Control'
+      group.append(subtitle)
+    }
+
+    if (node.kind !== 'control' && !node.parentId && neighbourCandidates(node).length) {
+      const expandBadge = svgElement('g', { class: 'spider-node-expand', role: 'button', tabindex: '0', 'aria-label': `${node.expanded ? 'Collapse' : 'Expand'} neighbours for ${node.id}` })
+      expandBadge.setAttribute('transform', 'translate(20 -20)')
+      expandBadge.append(svgElement('circle', { r: '10' }))
+      const plus = svgElement('text', { 'text-anchor': 'middle', y: '4' })
+      plus.textContent = node.expanded ? '−' : '+'
+      expandBadge.append(plus)
+      group.append(expandBadge)
+
+      const activate = (event: Event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        toggleNeighbours(node)
+      }
+      expandBadge.addEventListener('click', activate)
+      expandBadge.addEventListener('pointerup', activate)
+      expandBadge.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') activate(event)
+      })
+    }
+
+    nodeElements.set(node.id, group)
+    group.addEventListener('pointerenter', () => highlightNode(node))
+    group.addEventListener('pointerleave', clearHighlight)
+    group.addEventListener('focus', () => highlightNode(node))
+    group.addEventListener('blur', clearHighlight)
+    if (node.target) group.classList.add('clickable')
+    scene.append(group)
+
+    const minimapNode = svgElement('circle', {
+      cx: String(node.x),
+      cy: String(node.y),
+      r: node.kind === 'control' ? '34' : node.kind === 'process' ? '15' : '13',
+      class: `spider-minimap-node minimap-node-${node.kind}`,
+    })
+    minimapNodes.set(node.id, minimapNode)
+    minimapScene.append(minimapNode)
   }
 
   baseNodes.forEach((node) => createNodeElement(node))
   baseNodes.slice(1).forEach((node) => createEdge(center, node))
-
-  scene.addEventListener('click', (event) => {
-    const target = event.target instanceof Element ? event.target : null
-    const badge = target?.closest<SVGGElement>('.spider-node-expand')
-    if (!badge) return
-    event.preventDefault()
-    event.stopPropagation()
-    const group = badge.closest<SVGGElement>('.spider-node')
-    const node = group ? nodeById(group.getAttribute('data-node-id') ?? '') : undefined
-    if (node) toggleNeighbours(node)
-  })
-
-  scene.addEventListener('keydown', (event) => {
-    if (event.key !== 'Enter' && event.key !== ' ') return
-    const target = event.target instanceof Element ? event.target : null
-    const badge = target?.closest<SVGGElement>('.spider-node-expand')
-    if (!badge) return
-    event.preventDefault()
-    event.stopPropagation()
-    const group = badge.closest<SVGGElement>('.spider-node')
-    const node = group ? nodeById(group.getAttribute('data-node-id') ?? '') : undefined
-    if (node) toggleNeighbours(node)
-  })
 
   applyLayout('radial')
   applyTransform()
