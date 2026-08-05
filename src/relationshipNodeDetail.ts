@@ -10,6 +10,8 @@ type NodeDetails = {
   kind: NodeKind
   typeLabel: string
   summary: string
+  relationshipLabel: string
+  relationshipExplanation: string
   actionLabel?: string
   action?: () => void
 }
@@ -109,16 +111,19 @@ function readNodeDetails(node: SVGGElement): NodeDetails | null {
   const id = node.getAttribute('data-node-id') || node.querySelector('text')?.textContent?.trim() || ''
   if (!id) return null
 
+  const controlId = getControlId(detail)
+
   if (node.classList.contains('node-indicator')) {
     const row = findIndicatorRow(detail, id)
     const statement = row?.querySelector('span')?.textContent?.trim() || 'No statement supplied.'
     const theme = row?.querySelector('small')?.textContent?.trim() || 'Key Security Indicator'
-    const controlId = getControlId(detail)
     return {
       id,
       kind: 'indicator',
       typeLabel: theme,
       summary: statement,
+      relationshipLabel: 'Control references indicator',
+      relationshipExplanation: `${controlId} references ${id} as an indicator used to assess or demonstrate the control’s intended security outcome.`,
       actionLabel: 'Open indicator',
       action: () => openIndicatorPage(id, controlId),
     }
@@ -134,6 +139,8 @@ function readNodeDetails(node: SVGGElement): NodeDetails | null {
       kind: 'rule',
       typeLabel: 'Referenced rule',
       summary: statement,
+      relationshipLabel: 'Control references rule',
+      relationshipExplanation: `${controlId} is connected to ${id} because the rule provides source requirements or decision criteria relevant to the control.`,
       actionLabel: target ? 'Open rule' : undefined,
       action: target ? () => target.click() : undefined,
     }
@@ -144,7 +151,9 @@ function readNodeDetails(node: SVGGElement): NodeDetails | null {
       id,
       kind: 'process',
       typeLabel: 'Process',
-      summary: `This process is associated with ${getControlId(detail)}.`,
+      summary: `This process is associated with ${controlId}.`,
+      relationshipLabel: 'Control supported by process',
+      relationshipExplanation: `${id} is shown because it is an operational process associated with implementing or maintaining ${controlId}.`,
     }
   }
 
@@ -154,6 +163,8 @@ function readNodeDetails(node: SVGGElement): NodeDetails | null {
       kind: 'control',
       typeLabel: 'Control',
       summary: 'Central control for the relationships shown in this viewer.',
+      relationshipLabel: 'Relationship hub',
+      relationshipExplanation: `${controlId} is the central entity in this view. All displayed rules, indicators, and processes are directly associated with this control.`,
     }
   }
 
@@ -178,6 +189,10 @@ function showNodeCard(node: SVGGElement, focusAction = false) {
     <span class="relationship-node-card-type">${escapeHtml(details.typeLabel)}</span>
     <h4>${escapeHtml(details.id)}</h4>
     <p>${escapeHtml(details.summary)}</p>
+    <div class="relationship-node-card-explanation">
+      <span>${escapeHtml(details.relationshipLabel)}</span>
+      <p>${escapeHtml(details.relationshipExplanation)}</p>
+    </div>
     ${details.actionLabel ? `
       <div class="relationship-node-card-actions">
         <button type="button" class="primary-button" data-open-node>${escapeHtml(details.actionLabel)}</button>
@@ -188,7 +203,7 @@ function showNodeCard(node: SVGGElement, focusAction = false) {
   const viewportRect = viewport.getBoundingClientRect()
   const nodeRect = node.getBoundingClientRect()
   const maxLeft = Math.max(16, viewportRect.width - 356)
-  const maxTop = Math.max(16, viewportRect.height - 250)
+  const maxTop = Math.max(16, viewportRect.height - 320)
   card.style.left = `${Math.min(Math.max(nodeRect.left - viewportRect.left + nodeRect.width + 14, 16), maxLeft)}px`
   card.style.top = `${Math.min(Math.max(nodeRect.top - viewportRect.top - 12, 16), maxTop)}px`
 
