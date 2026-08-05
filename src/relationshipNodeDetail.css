@@ -1,0 +1,15 @@
+.spider-graph-viewport { position: relative; }
+.relationship-node-card { position: absolute; z-index: 12; width: min(340px, calc(100% - 32px)); padding: 18px; border: 1px solid #cdb9e4; border-radius: 14px; background: #fff; box-shadow: 0 18px 46px rgba(35, 24, 48, .24); cursor: default; }
+.relationship-node-card-close { position: absolute; top: 9px; right: 10px; width: 30px; height: 30px; border: 0; border-radius: 50%; background: transparent; color: #687985; font-size: 1.35rem; line-height: 1; cursor: pointer; }
+.relationship-node-card-close:hover { background: #f1edf7; color: #4f2e79; }
+.relationship-node-card-type { display: block; margin-right: 32px; color: #7653a6; font-size: .72rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.relationship-node-card h4 { margin: 6px 32px 8px 0; color: #253d4b; font-size: 1.05rem; }
+.relationship-node-card p { margin: 0; color: #526875; font-size: .88rem; line-height: 1.5; }
+.relationship-node-card-actions { display: flex; justify-content: flex-end; margin-top: 16px; }
+.relationship-node-card-actions .primary-button { min-width: 132px; }
+.indicator-return-button { margin-left: auto; white-space: nowrap; }
+
+@media (max-width: 800px) {
+  .relationship-node-card { left: 16px !important; right: 16px; top: auto !important; bottom: 16px; width: auto; }
+  .indicator-return-button { width: 100%; margin: 12px 0 0; }
+}
