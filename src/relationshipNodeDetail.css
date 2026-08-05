@@ -7,10 +7,22 @@
 .relationship-node-card p { margin: 0; color: #526875; font-size: .88rem; line-height: 1.5; }
 .relationship-node-card-actions { display: flex; justify-content: flex-end; margin-top: 16px; }
 .relationship-node-card-actions .primary-button { min-width: 132px; }
+.indicator-navigation-target { position: relative; z-index: 1; animation: indicator-target-pulse 2.6s ease-out; }
+@keyframes indicator-target-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(122, 77, 181, .75); border-color: #7a4db5; background: #faf7fd; }
+  18% { box-shadow: 0 0 0 7px rgba(122, 77, 181, .28); border-color: #7a4db5; background: #f5eefc; }
+  42% { box-shadow: 0 0 0 2px rgba(122, 77, 181, .42); border-color: #7a4db5; background: #faf7fd; }
+  68% { box-shadow: 0 0 0 7px rgba(122, 77, 181, .16); border-color: #9a78c4; background: #fff; }
+  100% { box-shadow: 0 0 0 0 rgba(122, 77, 181, 0); }
+}
 .indicator-return-button { position: fixed; right: 28px; bottom: 28px; z-index: 1100; display: inline-flex; align-items: center; gap: 9px; padding: 13px 17px; border: 1px solid #14598f; border-radius: 999px; background: #1769aa; color: #fff; box-shadow: 0 12px 30px rgba(18, 67, 103, .28); font: inherit; font-weight: 800; cursor: pointer; white-space: nowrap; }
 .indicator-return-button:hover { background: #12598f; transform: translateY(-1px); }
 .indicator-return-button:focus-visible { outline: 3px solid rgba(23, 105, 170, .3); outline-offset: 3px; }
 .indicator-return-button span:first-child { font-size: 1.1rem; line-height: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .indicator-navigation-target { animation: none; box-shadow: 0 0 0 4px rgba(122, 77, 181, .32); border-color: #7a4db5; background: #faf7fd; }
+}
 
 @media (max-width: 800px) {
   .relationship-node-card { left: 16px !important; right: 16px; top: auto !important; bottom: 16px; width: auto; }
