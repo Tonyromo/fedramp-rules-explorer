@@ -220,11 +220,32 @@ function renderGraph(detail: HTMLElement) {
   svg.append(scene)
   viewport.append(svg)
 
+  const minimap = document.createElement('div')
+  minimap.className = 'spider-minimap'
+  minimap.setAttribute('aria-label', 'Relationship graph mini-map')
+  const minimapSvg = svgElement('svg', { viewBox: '0 0 1100 700', role: 'img', 'aria-label': `Mini-map for ${relationship.heading}` })
+  const minimapScene = svgElement('g')
+  const minimapViewport = svgElement('rect', { class: 'spider-minimap-viewport', x: '0', y: '0', width: '1100', height: '700' })
+  minimapSvg.append(minimapScene, minimapViewport)
+  minimap.append(minimapSvg)
+  viewport.append(minimap)
+
   const center: GraphNode = { id: relationship.heading, label: relationship.heading, kind: 'control', x: 550, y: 350 }
   const nodes = [center, ...relationship.rules, ...relationship.indicators, ...relationship.processes]
   const edges: GraphEdge[] = nodes.slice(1).map((node) => ({ source: center, target: node }))
   const edgeElements = new Map<string, SVGLineElement>()
   const nodeElements = new Map<string, SVGGElement>()
+  const minimapEdges = new Map<string, SVGLineElement>()
+  const minimapNodes = new Map<string, SVGCircleElement>()
+
+  const updateMinimapViewport = () => {
+    const x = -translateX / scale
+    const y = -translateY / scale
+    minimapViewport.setAttribute('x', String(x))
+    minimapViewport.setAttribute('y', String(y))
+    minimapViewport.setAttribute('width', String(1100 / scale))
+    minimapViewport.setAttribute('height', String(700 / scale))
+  }
 
   const applyLayout = (layout: LayoutMode) => {
     if (layout === 'radial') {
@@ -274,7 +295,21 @@ function renderGraph(detail: HTMLElement) {
       const node = nodes.find((item) => item.id === id)
       if (node) element.setAttribute('transform', `translate(${node.x} ${node.y})`)
     })
+    minimapNodes.forEach((element, id) => {
+      const node = nodes.find((item) => item.id === id)
+      if (!node) return
+      element.setAttribute('cx', String(node.x))
+      element.setAttribute('cy', String(node.y))
+    })
     edgeElements.forEach((element, id) => {
+      const node = nodes.find((item) => item.id === id)
+      if (!node) return
+      element.setAttribute('x1', String(center.x))
+      element.setAttribute('y1', String(center.y))
+      element.setAttribute('x2', String(node.x))
+      element.setAttribute('y2', String(node.y))
+    })
+    minimapEdges.forEach((element, id) => {
       const node = nodes.find((item) => item.id === id)
       if (!node) return
       element.setAttribute('x1', String(center.x))
@@ -292,6 +327,12 @@ function renderGraph(detail: HTMLElement) {
     edge.setAttribute('data-target-id', target.id)
     edgeElements.set(target.id, edge)
     scene.append(edge)
+
+    const minimapEdge = svgElement('line', {
+      x1: String(source.x), y1: String(source.y), x2: String(target.x), y2: String(target.y), class: `spider-minimap-edge minimap-edge-${target.kind}`,
+    })
+    minimapEdges.set(target.id, minimapEdge)
+    minimapScene.append(minimapEdge)
   })
 
   const clearHighlight = () => {
@@ -343,9 +384,16 @@ function renderGraph(detail: HTMLElement) {
 
     if (node.target) group.classList.add('clickable')
     scene.append(group)
-  })
 
-  applyLayout('radial')
+    const minimapNode = svgElement('circle', {
+      cx: String(node.x),
+      cy: String(node.y),
+      r: node.kind === 'control' ? '34' : node.kind === 'process' ? '15' : '13',
+      class: `spider-minimap-node minimap-node-${node.kind}`,
+    })
+    minimapNodes.set(node.id, minimapNode)
+    minimapScene.append(minimapNode)
+  })
 
   let scale = 1
   let translateX = 0
@@ -354,12 +402,18 @@ function renderGraph(detail: HTMLElement) {
   let startX = 0
   let startY = 0
 
-  const applyTransform = () => scene.setAttribute('transform', `translate(${translateX} ${translateY}) scale(${scale})`)
+  const applyTransform = () => {
+    scene.setAttribute('transform', `translate(${translateX} ${translateY}) scale(${scale})`)
+    updateMinimapViewport()
+  }
   const centerOnControl = () => {
     translateX = center.x * (1 - scale)
     translateY = center.y * (1 - scale)
   }
   const fit = () => { scale = 1; centerOnControl(); applyTransform() }
+
+  applyLayout('radial')
+  applyTransform()
 
   svg.addEventListener('wheel', (event) => {
     event.preventDefault()
@@ -392,6 +446,15 @@ function renderGraph(detail: HTMLElement) {
   })
   svg.addEventListener('pointerleave', () => {
     if (!dragging) clearHighlight()
+  })
+
+  minimapSvg.addEventListener('click', (event) => {
+    const rect = minimapSvg.getBoundingClientRect()
+    const x = ((event.clientX - rect.left) / rect.width) * 1100
+    const y = ((event.clientY - rect.top) / rect.height) * 700
+    translateX = 550 - x * scale
+    translateY = 350 - y * scale
+    applyTransform()
   })
 
   graphSection.querySelector<HTMLSelectElement>('[data-action="layout"]')?.addEventListener('change', (event) => {
