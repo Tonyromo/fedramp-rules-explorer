@@ -1,0 +1,113 @@
+.rule-detail-page {
+  max-width: 1060px;
+}
+
+.rule-detail-page .detail-header {
+  margin-bottom: 1.25rem;
+}
+
+.rule-detail-page .detail-header h2 {
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  letter-spacing: -0.03em;
+}
+
+.rule-detail-page .detail-section:has(.official-text) {
+  border: 1px solid #b8ceda;
+  border-left: 5px solid #315f78;
+  background: #f8fbfc;
+  box-shadow: 0 8px 24px rgba(38, 72, 90, 0.07);
+}
+
+.rule-detail-page .detail-section:has(.official-text) h3 {
+  margin-bottom: 0.65rem;
+}
+
+.authoritative-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.75rem;
+  margin-bottom: 1rem;
+  color: #315f78;
+}
+
+.authoritative-label strong {
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.authoritative-label span {
+  color: #5b6f7a;
+  font-size: 0.88rem;
+}
+
+.rule-detail-page .official-text {
+  margin: 0;
+  color: #172b35;
+  font-size: 1.08rem;
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+
+.rule-detail-page .detail-grid {
+  gap: 0.85rem;
+}
+
+.rule-detail-page .detail-grid .detail-section {
+  min-height: 0;
+  padding: 1rem 1.15rem;
+  background: #fff;
+}
+
+.rule-detail-page .detail-grid h3 {
+  color: #657985;
+  font-size: 0.76rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.rule-detail-page .detail-grid p {
+  margin-bottom: 0;
+  font-weight: 600;
+}
+
+.rule-detail-page .source-info {
+  padding: 0;
+  overflow: hidden;
+  background: #f7f9fa;
+  border-color: #d8e0e4;
+}
+
+.rule-detail-page .source-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.15rem;
+  border: 0;
+  background: transparent;
+  color: #314b59;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rule-detail-page .source-toggle span {
+  font-weight: 700;
+}
+
+.rule-detail-page .source-toggle small {
+  color: #607784;
+}
+
+.rule-detail-page .source-info > dl,
+.rule-detail-page .source-info > p,
+.rule-detail-page .source-info > ul {
+  padding: 0 1.15rem 1.15rem;
+}
+
+.rule-detail-page .source-info-collapsed > :not(.source-toggle) {
+  display: none;
+}
