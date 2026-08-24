@@ -41,6 +41,11 @@ function goBackToControl(controlId: string): void {
   window.setTimeout(locate, 0)
 }
 
+function goBackToRule(ruleId: string): void {
+  closeThemes()
+  document.dispatchEvent(new CustomEvent('frx-return-to-rule', { detail: { ruleId } }))
+}
+
 function openIndicator(id: string): void {
   closeThemes()
   clickNav('Indicators')
@@ -155,7 +160,7 @@ function enhanceForceNavigation(): void {
   })
 }
 
-async function showThemes(highlightIndicatorId?: string, originControlId?: string): Promise<void> {
+async function showThemes(highlightIndicatorId?: string, originControlId?: string, originRuleId?: string): Promise<void> {
   closeThemes()
 
   const main = document.querySelector<HTMLElement>('.main-content')
@@ -176,12 +181,16 @@ async function showThemes(highlightIndicatorId?: string, originControlId?: strin
   const page = document.createElement('section')
   page.className = 'panel ksi-themes-page'
 
-  if (originControlId) {
+  if (originControlId || originRuleId) {
     const back = document.createElement('button')
     back.type = 'button'
     back.className = 'back-button control-origin-back'
-    back.textContent = `Back to ${originControlId}`
-    back.addEventListener('click', () => goBackToControl(originControlId))
+    const originId = originRuleId ?? originControlId ?? ''
+    back.textContent = `Back to ${originId}`
+    back.addEventListener('click', () => {
+      if (originRuleId) goBackToRule(originRuleId)
+      else if (originControlId) goBackToControl(originControlId)
+    })
     page.append(back)
   }
 
@@ -291,10 +300,10 @@ function enhance(): void {
 export function installDashboardEnhancements(): void {
   enhance()
   document.addEventListener('frx-open-ksi-theme-indicator', (event) => {
-    const detail = (event as CustomEvent<{ indicatorId?: string; controlId?: string }>).detail
+    const detail = (event as CustomEvent<{ indicatorId?: string; controlId?: string; ruleId?: string }>).detail
     if (!detail?.indicatorId) return
     if (detail.controlId) sessionStorage.setItem(CONTROL_ORIGIN_KEY, detail.controlId)
-    void showThemes(detail.indicatorId, detail.controlId)
+    void showThemes(detail.indicatorId, detail.controlId, detail.ruleId)
   })
   new MutationObserver(enhance).observe(document.body, { childList: true, subtree: true })
 }
