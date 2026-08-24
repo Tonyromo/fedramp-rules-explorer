@@ -7,6 +7,9 @@
 .stat-card-link { cursor: pointer; transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease; }
 .stat-card-link:hover, .stat-card-link:focus-visible { transform: translateY(-1px); border-color: #8fb3c8; box-shadow: 0 5px 14px rgba(15, 43, 60, .08); outline: none; }
 
+.main-content.ksi-themes-mode > :not(.topbar):not(.ksi-themes-page) { display: none !important; }
+.ksi-themes-page { display: block !important; }
+
 .ksi-theme-list { display: grid; gap: 16px; }
 .ksi-theme-card { border: 1px solid #d8e1e7; border-radius: 12px; overflow: hidden; background: #fff; }
 .ksi-theme-heading { display: flex; gap: 18px; align-items: flex-start; padding: 18px 20px; background: #f7f9fa; border-bottom: 1px solid #e3e9ed; }
