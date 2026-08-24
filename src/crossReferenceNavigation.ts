@@ -1,11 +1,15 @@
 import { loadDataset } from './data/load'
 
-const READY = 'data-cross-reference-ready'
+const DEFINITION_READY = 'data-cross-reference-ready'
+const RELATED_READY = 'data-related-rule-cross-reference-ready'
 const HIGHLIGHT = 'indicator-navigation-target'
 const ORIGIN_KEY = 'frx-cross-reference-origin-rule'
 const TARGET_DEFINITION_KEY = 'frx-cross-reference-target-definition'
+const RELATED_ORIGIN_KEY = 'frx-related-rule-origin'
+const RELATED_TARGET_KEY = 'frx-related-rule-target'
 const NAV_READY = 'data-cross-reference-nav-ready'
 let locatingDefinition = false
+let locatingRelatedRule = false
 
 function navButton(label: string): HTMLButtonElement | undefined {
   return Array.from(document.querySelectorAll<HTMLButtonElement>('.sidebar nav button'))
@@ -32,31 +36,30 @@ function setGlobalSearch(value: string): boolean {
   return true
 }
 
-function clearCrossReferenceState(): void {
+function clearRuleFilters(): void {
+  const panel = document.querySelector<HTMLElement>('.filter-panel')
+  const clear = panel?.querySelector<HTMLButtonElement>('.filter-heading .text-button')
+  clear?.click()
+}
+
+function clearDefinitionCrossReferenceState(): void {
   sessionStorage.removeItem(ORIGIN_KEY)
   sessionStorage.removeItem(TARGET_DEFINITION_KEY)
   locatingDefinition = false
   clearHighlight()
 }
 
-function returnToRule(ruleId: string): void {
-  setGlobalSearch('')
-  clearCrossReferenceState()
-  navButton('Rules')?.click()
+function clearRelatedRuleState(): void {
+  sessionStorage.removeItem(RELATED_ORIGIN_KEY)
+  sessionStorage.removeItem(RELATED_TARGET_KEY)
+  locatingRelatedRule = false
+}
 
-  let attempts = 0
-  const locate = () => {
-    attempts += 1
-    const card = Array.from(document.querySelectorAll<HTMLElement>('.rule-card'))
-      .find((item) => item.querySelector('.rule-card-top code')?.textContent?.trim() === ruleId)
-    const open = card?.querySelector<HTMLButtonElement>('.rule-card-open')
-    if (!open && attempts < 30) {
-      window.setTimeout(locate, 50)
-      return
-    }
-    open?.click()
-  }
-  window.setTimeout(locate, 0)
+function returnToRule(ruleId: string): void {
+  clearDefinitionCrossReferenceState()
+  clearRelatedRuleState()
+  navButton('Rules')?.click()
+  locateAndOpenRule(ruleId)
 }
 
 function addOriginBackButton(ruleId: string): void {
@@ -68,6 +71,21 @@ function addOriginBackButton(ruleId: string): void {
   button.textContent = `Back to ${ruleId}`
   button.addEventListener('click', () => returnToRule(ruleId))
   panel.prepend(button)
+}
+
+function addRelatedRuleBackButton(detail: HTMLElement, originRuleId: string): void {
+  const actions = detail.querySelector<HTMLElement>('.detail-actions')
+  if (!actions || actions.querySelector('.related-rule-back')) return
+
+  const nativeBack = actions.querySelector<HTMLButtonElement>('.back-button')
+  if (nativeBack) nativeBack.style.display = 'none'
+
+  const button = document.createElement('button')
+  button.type = 'button'
+  button.className = 'back-button related-rule-back'
+  button.textContent = `Back to ${originRuleId}`
+  button.addEventListener('click', () => returnToRule(originRuleId))
+  actions.prepend(button)
 }
 
 function findDefinitionCard(definitionId: string): HTMLElement | undefined {
@@ -103,10 +121,6 @@ function locateDefinition(definitionId: string, ruleId: string): void {
       return
     }
 
-    // Use the existing Definitions search only as a transient exact-target
-    // mechanism. This avoids brittle document-level scrolling through the full
-    // register while guaranteeing that the referenced definition is the item
-    // presented to the user.
     const searchReady = setGlobalSearch(definitionId)
     const card = searchReady ? findDefinitionCard(definitionId) : undefined
 
@@ -134,8 +148,62 @@ function openDefinition(definitionId: string, ruleId: string): void {
   locateDefinition(definitionId, ruleId)
 }
 
+function findRuleCard(ruleId: string): HTMLElement | undefined {
+  return Array.from(document.querySelectorAll<HTMLElement>('.rule-card')).find((card) =>
+    card.querySelector('.rule-card-top code')?.textContent?.trim() === ruleId,
+  )
+}
+
+function locateAndOpenRule(ruleId: string, originRuleId?: string): void {
+  if (locatingRelatedRule) return
+  locatingRelatedRule = true
+  let attempts = 0
+
+  const locate = () => {
+    attempts += 1
+    const rulesActive = navButton('Rules')?.classList.contains('active')
+    if (!rulesActive) {
+      if (attempts < 60) {
+        window.setTimeout(locate, 50)
+        return
+      }
+      locatingRelatedRule = false
+      return
+    }
+
+    clearRuleFilters()
+    const searchReady = setGlobalSearch(ruleId)
+    const card = searchReady ? findRuleCard(ruleId) : undefined
+    const open = card?.querySelector<HTMLButtonElement>('.rule-card-open')
+
+    if (!open && attempts < 60) {
+      window.setTimeout(locate, 50)
+      return
+    }
+
+    locatingRelatedRule = false
+    if (!open) return
+
+    open.click()
+    if (originRuleId) {
+      sessionStorage.setItem(RELATED_ORIGIN_KEY, originRuleId)
+      sessionStorage.setItem(RELATED_TARGET_KEY, ruleId)
+    }
+  }
+
+  window.setTimeout(locate, 0)
+}
+
+function openRelatedRule(targetRuleId: string, originRuleId: string): void {
+  sessionStorage.setItem(RELATED_ORIGIN_KEY, originRuleId)
+  sessionStorage.setItem(RELATED_TARGET_KEY, targetRuleId)
+  locatingRelatedRule = false
+  navButton('Rules')?.click()
+  locateAndOpenRule(targetRuleId, originRuleId)
+}
+
 async function enhanceRuleDefinitions(detail: HTMLElement): Promise<void> {
-  if (detail.hasAttribute(READY)) return
+  if (detail.hasAttribute(DEFINITION_READY)) return
   const ruleId = currentRuleId(detail)
   if (!ruleId) return
 
@@ -144,7 +212,7 @@ async function enhanceRuleDefinitions(detail: HTMLElement): Promise<void> {
   const section = heading?.closest<HTMLElement>('.detail-section')
   if (!section) return
 
-  detail.setAttribute(READY, 'true')
+  detail.setAttribute(DEFINITION_READY, 'true')
   const { data } = await loadDataset()
 
   section.querySelectorAll<HTMLLIElement>('li').forEach((item) => {
@@ -171,6 +239,48 @@ async function enhanceRuleDefinitions(detail: HTMLElement): Promise<void> {
   })
 }
 
+async function enhanceRelatedRules(detail: HTMLElement): Promise<void> {
+  if (detail.hasAttribute(RELATED_READY)) return
+  const ruleId = currentRuleId(detail)
+  if (!ruleId) return
+  detail.setAttribute(RELATED_READY, 'true')
+
+  const { data } = await loadDataset()
+  const rule = data.rules.find((candidate) => candidate.id === ruleId)
+  if (!rule?.relatedRules.length) return
+
+  const resolved = rule.relatedRules
+    .map((id) => data.rules.find((candidate) => candidate.id === id))
+    .filter((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate))
+  if (!resolved.length) return
+
+  const section = document.createElement('section')
+  section.className = 'detail-section related-rules-section'
+
+  const heading = document.createElement('h3')
+  heading.textContent = 'Related rules'
+  section.append(heading)
+
+  const list = document.createElement('div')
+  list.className = 'relationship-list related-rules-list'
+
+  resolved.forEach((related) => {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.className = 'related-rule-link'
+    button.innerHTML = `<code>${related.id}</code><span>${related.statement || 'No statement supplied.'}</span><small>${related.processId} · ${related.force || 'Unspecified'}</small>`
+    button.addEventListener('click', () => openRelatedRule(related.id, ruleId))
+    list.append(button)
+  })
+
+  section.append(list)
+
+  const sourceSection = Array.from(detail.querySelectorAll<HTMLElement>('.detail-section'))
+    .find((candidate) => candidate.querySelector('h3')?.textContent?.trim() === 'Source information')
+  if (sourceSection) sourceSection.before(section)
+  else detail.append(section)
+}
+
 function installNavigationCleanup(): void {
   const nav = document.querySelector<HTMLElement>('.sidebar nav')
   if (!nav || nav.hasAttribute(NAV_READY)) return
@@ -180,11 +290,18 @@ function installNavigationCleanup(): void {
     const button = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('button') : null
     if (!button) return
     const label = button.textContent?.trim() ?? ''
-    const origin = sessionStorage.getItem(ORIGIN_KEY)
-    if (!origin || label.startsWith('Definitions')) return
 
-    setGlobalSearch('')
-    clearCrossReferenceState()
+    const definitionOrigin = sessionStorage.getItem(ORIGIN_KEY)
+    if (definitionOrigin && !label.startsWith('Definitions')) {
+      setGlobalSearch('')
+      clearDefinitionCrossReferenceState()
+    }
+
+    const relatedOrigin = sessionStorage.getItem(RELATED_ORIGIN_KEY)
+    if (relatedOrigin && !label.startsWith('Rules')) {
+      setGlobalSearch('')
+      clearRelatedRuleState()
+    }
   }, true)
 }
 
@@ -192,7 +309,15 @@ function enhance(): void {
   installNavigationCleanup()
 
   const detail = document.querySelector<HTMLElement>('.detail-page')
-  if (detail) void enhanceRuleDefinitions(detail)
+  if (detail) {
+    void enhanceRuleDefinitions(detail)
+    void enhanceRelatedRules(detail)
+
+    const currentId = currentRuleId(detail)
+    const relatedOrigin = sessionStorage.getItem(RELATED_ORIGIN_KEY)
+    const relatedTarget = sessionStorage.getItem(RELATED_TARGET_KEY)
+    if (relatedOrigin && relatedTarget && currentId === relatedTarget) addRelatedRuleBackButton(detail, relatedOrigin)
+  }
 
   const origin = sessionStorage.getItem(ORIGIN_KEY)
   const targetDefinition = sessionStorage.getItem(TARGET_DEFINITION_KEY)
