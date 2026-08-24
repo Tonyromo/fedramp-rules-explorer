@@ -1,39 +1,25 @@
 import { loadDataset } from './data/load'
 
 const READY = 'data-dashboard-enhancements-ready'
-const NAV_READY = 'data-ksi-nav-cleanup-ready'
+const NAV_READY = 'data-ksi-nav-ready'
 const INDICATOR_HIGHLIGHT_CLASS = 'indicator-navigation-target'
 
-function clearSearch(): void {
-  const search = document.querySelector<HTMLInputElement>('.search-box input')
-  if (!search || !search.value) return
-  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
-  setter?.call(search, '')
-  search.dispatchEvent(new Event('input', { bubbles: true }))
-}
-
-function restoreThemesPage(): void {
+function closeThemes(): void {
   document.querySelector('.ksi-themes-page')?.remove()
-
-  const main = document.querySelector<HTMLElement>('.main-content')
-  if (!main) return
-
-  Array.from(main.children).forEach((child) => {
-    if (!(child instanceof HTMLElement) || child.classList.contains('topbar')) return
-    if (child.dataset.ksiHidden === undefined) return
-    child.style.display = child.dataset.ksiHidden
-    delete child.dataset.ksiHidden
-  })
+  document.querySelector<HTMLElement>('.main-content')?.classList.remove('ksi-themes-mode')
 }
 
 function clickNav(label: string): void {
-  clearSearch()
+  closeThemes()
   const button = Array.from(document.querySelectorAll<HTMLButtonElement>('.sidebar nav button'))
     .find((item) => item.textContent?.trim().startsWith(label))
   button?.click()
 }
 
-function focusIndicator(id: string): void {
+function openIndicator(id: string): void {
+  closeThemes()
+  clickNav('Indicators')
+
   let attempts = 0
   const locate = () => {
     attempts += 1
@@ -44,7 +30,6 @@ function focusIndicator(id: string): void {
       window.setTimeout(locate, 50)
       return
     }
-
     if (!card) return
 
     document.querySelectorAll(`.${INDICATOR_HIGHLIGHT_CLASS}`).forEach((item) => item.classList.remove(INDICATOR_HIGHLIGHT_CLASS))
@@ -71,35 +56,33 @@ function enhanceDashboardTiles(): void {
   grid.querySelectorAll<HTMLElement>('.stat-card').forEach((card) => {
     const label = card.querySelector('span')?.textContent?.trim() ?? ''
     const route = routes[label]
-    if (!route) return
-    card.classList.add('stat-card-link')
-    card.setAttribute('role', 'button')
-    card.setAttribute('tabindex', '0')
-    card.setAttribute('aria-label', `Open ${label}`)
-    const open = () => clickNav(route)
-    card.addEventListener('click', open)
-    card.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open() }
-    })
-  })
+    if (route) {
+      card.classList.add('stat-card-link')
+      card.setAttribute('role', 'button')
+      card.setAttribute('tabindex', '0')
+      card.setAttribute('aria-label', `Open ${label}`)
+      const open = () => clickNav(route)
+      card.addEventListener('click', open)
+      card.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open() }
+      })
+    }
 
-  const themesCard = Array.from(grid.querySelectorAll<HTMLElement>('.stat-card'))
-    .find((card) => card.querySelector('span')?.textContent?.trim() === 'KSI themes')
-  if (themesCard) {
-    themesCard.classList.add('stat-card-link')
-    themesCard.setAttribute('role', 'button')
-    themesCard.setAttribute('tabindex', '0')
-    themesCard.setAttribute('aria-label', 'Open KSI Themes')
-    themesCard.addEventListener('click', () => { void showThemes() })
-    themesCard.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); void showThemes() }
-    })
-  }
+    if (label === 'KSI themes') {
+      card.classList.add('stat-card-link')
+      card.setAttribute('role', 'button')
+      card.setAttribute('tabindex', '0')
+      card.setAttribute('aria-label', 'Open KSI Themes')
+      card.addEventListener('click', () => { void showThemes() })
+      card.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); void showThemes() }
+      })
+    }
+  })
 }
 
 async function showThemes(): Promise<void> {
-  restoreThemesPage()
-  clearSearch()
+  closeThemes()
 
   const main = document.querySelector<HTMLElement>('.main-content')
   if (!main) return
@@ -107,15 +90,6 @@ async function showThemes(): Promise<void> {
   const nav = document.querySelector<HTMLElement>('.sidebar nav')
   nav?.querySelectorAll('button').forEach((item) => item.classList.remove('active'))
   nav?.querySelector<HTMLButtonElement>('[data-ksi-themes-nav]')?.classList.add('active')
-
-  const title = main.querySelector<HTMLElement>('.topbar h1')
-  if (title) title.textContent = 'KSI Themes'
-
-  const existing = Array.from(main.children).filter((child) => !child.classList.contains('topbar')) as HTMLElement[]
-  existing.forEach((child) => {
-    child.dataset.ksiHidden = child.style.display
-    child.style.display = 'none'
-  })
 
   const { data } = await loadDataset()
   const themes = new Map<string, { name: string; indicators: typeof data.indicators }>()
@@ -144,11 +118,7 @@ async function showThemes(): Promise<void> {
       const row = document.createElement('button')
       row.type = 'button'
       row.innerHTML = `<code>${indicator.id}</code><span>${indicator.statement}</span>`
-      row.addEventListener('click', () => {
-        restoreThemesPage()
-        clickNav('Indicators')
-        focusIndicator(indicator.id)
-      })
+      row.addEventListener('click', () => openIndicator(indicator.id))
       indicators.append(row)
     })
 
@@ -156,6 +126,7 @@ async function showThemes(): Promise<void> {
     list.append(article)
   })
 
+  main.classList.add('ksi-themes-mode')
   main.append(page)
 }
 
@@ -163,14 +134,14 @@ function addThemesNav(): void {
   const nav = document.querySelector<HTMLElement>('.sidebar nav')
   if (!nav) return
 
-  nav.querySelectorAll<HTMLButtonElement>('button').forEach((button) => {
-    if (button.hasAttribute(NAV_READY) || button.dataset.ksiThemesNav === 'true') return
-    button.setAttribute(NAV_READY, 'true')
-    button.addEventListener('click', () => {
-      restoreThemesPage()
-      clearSearch()
-    }, { capture: true })
-  })
+  if (!nav.hasAttribute(NAV_READY)) {
+    nav.setAttribute(NAV_READY, 'true')
+    nav.addEventListener('click', (event) => {
+      const button = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('button') : null
+      if (!button || button.dataset.ksiThemesNav === 'true') return
+      closeThemes()
+    }, true)
+  }
 
   if (nav.querySelector('[data-ksi-themes-nav]')) return
 
