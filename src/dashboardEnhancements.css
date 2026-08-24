@@ -7,6 +7,9 @@
 .stat-card-link { cursor: pointer; transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease; }
 .stat-card-link:hover, .stat-card-link:focus-visible { transform: translateY(-1px); border-color: #8fb3c8; box-shadow: 0 5px 14px rgba(15, 43, 60, .08); outline: none; }
 
+.force-row-link { cursor: pointer; transition: transform .12s ease, box-shadow .12s ease, background .12s ease; }
+.force-row-link:hover, .force-row-link:focus-visible { transform: translateY(-1px); background: #edf4f7; box-shadow: 0 3px 10px rgba(15, 43, 60, .08); outline: none; }
+
 .main-content.ksi-themes-mode > :not(.topbar):not(.ksi-themes-page) { display: none !important; }
 .ksi-themes-page { display: block !important; }
 
