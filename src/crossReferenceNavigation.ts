@@ -19,6 +19,15 @@ function currentRuleId(detail: HTMLElement): string | undefined {
   return id || undefined
 }
 
+function clearGlobalSearch(): void {
+  const input = document.querySelector<HTMLInputElement>('.search-box input')
+  if (!input || !input.value) return
+
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+  setter?.call(input, '')
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
 function returnToRule(ruleId: string): void {
   sessionStorage.removeItem(ORIGIN_KEY)
   sessionStorage.removeItem(TARGET_DEFINITION_KEY)
@@ -64,25 +73,30 @@ function highlightListItem(card: HTMLElement): void {
   clearHighlight()
   card.classList.add(HIGHLIGHT)
   card.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  window.setTimeout(() => card.classList.remove(HIGHLIGHT), 2600)
+  window.setTimeout(() => {
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, 180)
+  window.setTimeout(() => card.classList.remove(HIGHLIGHT), 3000)
 }
 
 function locateDefinition(definitionId: string, ruleId: string): void {
   let attempts = 0
   const locate = () => {
     attempts += 1
-    const definitionsActive = navButton('Definitions')?.classList.contains('active')
-    const card = Array.from(document.querySelectorAll<HTMLElement>('.record-card'))
-      .find((item) => item.querySelector('.record-header code')?.textContent?.trim() === definitionId)
+    clearGlobalSearch()
 
-    if ((!definitionsActive || !card) && attempts < 40) {
+    const definitionsActive = navButton('Definitions')?.classList.contains('active')
+    const cards = Array.from(document.querySelectorAll<HTMLElement>('.record-card'))
+    const card = cards.find((item) => item.querySelector('.record-header code')?.textContent?.trim() === definitionId)
+
+    if ((!definitionsActive || !card) && attempts < 60) {
       window.setTimeout(locate, 50)
       return
     }
     if (!card) return
 
-    highlightListItem(card)
     addOriginBackButton(ruleId)
+    window.setTimeout(() => highlightListItem(card), 80)
     sessionStorage.removeItem(TARGET_DEFINITION_KEY)
   }
   window.setTimeout(locate, 0)
@@ -92,7 +106,8 @@ function openDefinition(definitionId: string, ruleId: string): void {
   sessionStorage.setItem(ORIGIN_KEY, ruleId)
   sessionStorage.setItem(TARGET_DEFINITION_KEY, definitionId)
   navButton('Definitions')?.click()
-  locateDefinition(definitionId, ruleId)
+  window.setTimeout(clearGlobalSearch, 0)
+  window.setTimeout(() => locateDefinition(definitionId, ruleId), 50)
 }
 
 async function enhanceRuleDefinitions(detail: HTMLElement): Promise<void> {
@@ -119,6 +134,8 @@ async function enhanceRuleDefinitions(detail: HTMLElement): Promise<void> {
     item.setAttribute('role', 'button')
     item.setAttribute('tabindex', '0')
     item.setAttribute('aria-label', `Open definition ${term}`)
+    item.dataset.definitionId = definition.id
+
     const open = () => openDefinition(definition.id, ruleId)
     item.addEventListener('click', open)
     item.addEventListener('keydown', (event) => {
