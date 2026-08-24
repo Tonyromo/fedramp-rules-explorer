@@ -2,6 +2,7 @@ import { loadDataset } from './data/load'
 
 const READY = 'data-dashboard-enhancements-ready'
 const NAV_READY = 'data-ksi-nav-ready'
+const FORCE_READY = 'data-force-navigation-ready'
 const INDICATOR_HIGHLIGHT_CLASS = 'indicator-navigation-target'
 const CONTROL_ORIGIN_KEY = 'frx-control-origin'
 
@@ -65,6 +66,30 @@ function openIndicator(id: string): void {
   window.setTimeout(locate, 0)
 }
 
+function openRulesByForce(force: string): void {
+  closeThemes()
+  clickNav('Rules')
+
+  let attempts = 0
+  const applyFilter = () => {
+    attempts += 1
+    const labels = Array.from(document.querySelectorAll<HTMLLabelElement>('.filter-panel label'))
+    const forceLabel = labels.find((label) => label.textContent?.trim().startsWith('Force'))
+    const select = forceLabel?.querySelector<HTMLSelectElement>('select')
+
+    if (!select && attempts < 20) {
+      window.setTimeout(applyFilter, 50)
+      return
+    }
+    if (!select) return
+
+    select.value = force
+    select.dispatchEvent(new Event('change', { bubbles: true }))
+  }
+
+  window.setTimeout(applyFilter, 0)
+}
+
 function enhanceDashboardTiles(): void {
   const grid = document.querySelector<HTMLElement>('.stats-grid')
   if (!grid || grid.hasAttribute(READY)) return
@@ -102,6 +127,31 @@ function enhanceDashboardTiles(): void {
         if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); void showThemes() }
       })
     }
+  })
+}
+
+function enhanceForceNavigation(): void {
+  const grid = document.querySelector<HTMLElement>('.force-grid')
+  if (!grid || grid.hasAttribute(FORCE_READY)) return
+  grid.setAttribute(FORCE_READY, 'true')
+
+  grid.querySelectorAll<HTMLElement>('.force-row').forEach((row) => {
+    const force = row.querySelector('span')?.textContent?.trim()
+    if (!force) return
+
+    row.classList.add('force-row-link')
+    row.setAttribute('role', 'button')
+    row.setAttribute('tabindex', '0')
+    row.setAttribute('aria-label', `Show ${force} rules`)
+
+    const open = () => openRulesByForce(force)
+    row.addEventListener('click', open)
+    row.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault()
+        open()
+      }
+    })
   })
 }
 
@@ -234,6 +284,7 @@ function addThemesNav(): void {
 function enhance(): void {
   addThemesNav()
   enhanceDashboardTiles()
+  enhanceForceNavigation()
   enhanceControlOriginBack()
 }
 
