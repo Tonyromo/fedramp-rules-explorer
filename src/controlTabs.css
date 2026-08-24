@@ -1,5 +1,22 @@
+.control-relationship-map {
+  display: block !important;
+}
+
+.control-relationship-map > .relationship-summary {
+  width: 100% !important;
+  margin: 22px 0 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.control-relationship-map > .relationship-summary::before {
+  display: none !important;
+  content: none !important;
+}
+
 .control-tabs {
-  grid-column: 1 / -1;
   width: 100%;
   max-width: none;
   margin-top: 20px;
