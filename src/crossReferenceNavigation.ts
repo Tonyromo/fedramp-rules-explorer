@@ -1,7 +1,7 @@
 import { loadDataset } from './data/load'
 
 const READY = 'data-cross-reference-ready'
-const HIGHLIGHT = 'cross-reference-target'
+const HIGHLIGHT = 'indicator-navigation-target'
 const ORIGIN_KEY = 'frx-cross-reference-origin-rule'
 
 function navButton(label: string): HTMLButtonElement | undefined {
@@ -58,6 +58,13 @@ function addOriginBackButton(ruleId: string): void {
   window.setTimeout(add, 0)
 }
 
+function highlightListItem(card: HTMLElement): void {
+  clearHighlight()
+  card.classList.add(HIGHLIGHT)
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  window.setTimeout(() => card.classList.remove(HIGHLIGHT), 2600)
+}
+
 function openDefinition(term: string, ruleId: string): void {
   sessionStorage.setItem(ORIGIN_KEY, ruleId)
   navButton('Definitions')?.click()
@@ -74,10 +81,7 @@ function openDefinition(term: string, ruleId: string): void {
     }
     if (!card) return
 
-    clearHighlight()
-    card.classList.add(HIGHLIGHT)
-    card.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    window.setTimeout(() => card.classList.remove(HIGHLIGHT), 2600)
+    highlightListItem(card)
     addOriginBackButton(ruleId)
   }
   window.setTimeout(locate, 0)
