@@ -23,8 +23,8 @@ createRoot(document.getElementById('root')!).render(
 )
 
 installMilestone4Enhancements()
+installControlTabs()
 installControlClarity()
 installContentClarity()
 installRuleDetailClarity()
-installControlTabs()
 installControlTabClarity()
