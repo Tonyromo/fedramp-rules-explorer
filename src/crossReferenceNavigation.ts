@@ -4,6 +4,7 @@ const READY = 'data-cross-reference-ready'
 const HIGHLIGHT = 'indicator-navigation-target'
 const ORIGIN_KEY = 'frx-cross-reference-origin-rule'
 const TARGET_DEFINITION_KEY = 'frx-cross-reference-target-definition'
+let locatingDefinition = false
 
 function navButton(label: string): HTMLButtonElement | undefined {
   return Array.from(document.querySelectorAll<HTMLButtonElement>('.sidebar nav button'))
@@ -22,7 +23,6 @@ function currentRuleId(detail: HTMLElement): string | undefined {
 function clearGlobalSearch(): void {
   const input = document.querySelector<HTMLInputElement>('.search-box input')
   if (!input || !input.value) return
-
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
   setter?.call(input, '')
   input.dispatchEvent(new Event('input', { bubbles: true }))
@@ -49,65 +49,75 @@ function returnToRule(ruleId: string): void {
 }
 
 function addOriginBackButton(ruleId: string): void {
-  let attempts = 0
-  const add = () => {
-    attempts += 1
-    const panel = document.querySelector<HTMLElement>('.main-content > .panel')
-    if (!panel && attempts < 20) {
-      window.setTimeout(add, 50)
-      return
-    }
-    if (!panel || panel.querySelector('.cross-reference-back')) return
-
-    const button = document.createElement('button')
-    button.type = 'button'
-    button.className = 'back-button cross-reference-back'
-    button.textContent = `Back to ${ruleId}`
-    button.addEventListener('click', () => returnToRule(ruleId))
-    panel.prepend(button)
-  }
-  window.setTimeout(add, 0)
+  const panel = document.querySelector<HTMLElement>('.main-content > .panel')
+  if (!panel || panel.querySelector('.cross-reference-back')) return
+  const button = document.createElement('button')
+  button.type = 'button'
+  button.className = 'back-button cross-reference-back'
+  button.textContent = `Back to ${ruleId}`
+  button.addEventListener('click', () => returnToRule(ruleId))
+  panel.prepend(button)
 }
 
-function highlightListItem(card: HTMLElement): void {
+function highlightDefinition(card: HTMLElement): void {
   clearHighlight()
   card.classList.add(HIGHLIGHT)
-  card.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  window.setTimeout(() => {
-    card.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }, 180)
-  window.setTimeout(() => card.classList.remove(HIGHLIGHT), 3000)
+
+  // Position the selected definition explicitly below the page header. Using
+  // scrollIntoView(center) allowed the browser to clamp near the bottom of the
+  // document, which made the navigation appear to land on the wrong record.
+  const top = window.scrollY + card.getBoundingClientRect().top - 130
+  window.scrollTo({ top: Math.max(0, top), behavior: 'auto' })
+
+  window.setTimeout(() => card.classList.remove(HIGHLIGHT), 4000)
+}
+
+function findDefinitionCard(definitionId: string): HTMLElement | undefined {
+  return Array.from(document.querySelectorAll<HTMLElement>('.record-card')).find((card) => {
+    const id = card.querySelector('code')?.textContent?.trim()
+    return id === definitionId
+  })
 }
 
 function locateDefinition(definitionId: string, ruleId: string): void {
+  if (locatingDefinition) return
+  locatingDefinition = true
   let attempts = 0
+
   const locate = () => {
     attempts += 1
-    clearGlobalSearch()
-
     const definitionsActive = navButton('Definitions')?.classList.contains('active')
-    const cards = Array.from(document.querySelectorAll<HTMLElement>('.record-card'))
-    const card = cards.find((item) => item.querySelector('.record-header code')?.textContent?.trim() === definitionId)
+    const card = definitionsActive ? findDefinitionCard(definitionId) : undefined
 
     if ((!definitionsActive || !card) && attempts < 60) {
       window.setTimeout(locate, 50)
       return
     }
+
+    locatingDefinition = false
     if (!card) return
 
     addOriginBackButton(ruleId)
-    window.setTimeout(() => highlightListItem(card), 80)
-    sessionStorage.removeItem(TARGET_DEFINITION_KEY)
+    // Let the inserted back button finish layout before calculating the exact
+    // target position, then scroll once only.
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        highlightDefinition(card)
+        sessionStorage.removeItem(TARGET_DEFINITION_KEY)
+      })
+    })
   }
+
   window.setTimeout(locate, 0)
 }
 
 function openDefinition(definitionId: string, ruleId: string): void {
   sessionStorage.setItem(ORIGIN_KEY, ruleId)
   sessionStorage.setItem(TARGET_DEFINITION_KEY, definitionId)
+  locatingDefinition = false
+  clearGlobalSearch()
   navButton('Definitions')?.click()
-  window.setTimeout(clearGlobalSearch, 0)
-  window.setTimeout(() => locateDefinition(definitionId, ruleId), 50)
+  locateDefinition(definitionId, ruleId)
 }
 
 async function enhanceRuleDefinitions(detail: HTMLElement): Promise<void> {
