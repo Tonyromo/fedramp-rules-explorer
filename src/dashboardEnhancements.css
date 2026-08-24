@@ -1,0 +1,23 @@
+.stats-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+
+.stat-card { min-width: 0; }
+.stat-card-link { cursor: pointer; transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease; }
+.stat-card-link:hover, .stat-card-link:focus-visible { transform: translateY(-1px); border-color: #8fb3c8; box-shadow: 0 5px 14px rgba(15, 43, 60, .08); outline: none; }
+
+.ksi-theme-list { display: grid; gap: 16px; }
+.ksi-theme-card { border: 1px solid #d8e1e7; border-radius: 12px; overflow: hidden; background: #fff; }
+.ksi-theme-heading { display: flex; gap: 18px; align-items: flex-start; padding: 18px 20px; background: #f7f9fa; border-bottom: 1px solid #e3e9ed; }
+.ksi-theme-heading code { font-weight: 700; color: #0d567f; min-width: 90px; }
+.ksi-theme-heading h3 { margin: 0 0 4px; }
+.ksi-theme-heading span { color: #637786; font-size: .9rem; }
+.ksi-theme-indicators { display: grid; }
+.ksi-theme-indicators button { display: grid; grid-template-columns: 170px 1fr; gap: 16px; text-align: left; border: 0; border-bottom: 1px solid #edf1f3; background: #fff; padding: 14px 20px; cursor: pointer; }
+.ksi-theme-indicators button:last-child { border-bottom: 0; }
+.ksi-theme-indicators button:hover { background: #f7fafc; }
+.ksi-theme-indicators code { font-weight: 700; color: #0d567f; }
+
+@media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; } }
+@media (max-width: 760px) { .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } .ksi-theme-indicators button { grid-template-columns: 1fr; } }
