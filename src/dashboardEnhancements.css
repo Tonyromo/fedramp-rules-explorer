@@ -22,5 +22,12 @@
 .ksi-theme-indicators button:hover { background: #f7fafc; }
 .ksi-theme-indicators code { font-weight: 700; color: #0d567f; }
 
+.indicator-navigation-target {
+  border-color: #2a6f97 !important;
+  box-shadow: 0 0 0 3px rgba(42, 111, 151, .18), 0 8px 22px rgba(15, 43, 60, .10) !important;
+  background: #f3f9fc !important;
+  transition: box-shadow .18s ease, background .18s ease, border-color .18s ease;
+}
+
 @media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; } }
 @media (max-width: 760px) { .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } .ksi-theme-indicators button { grid-template-columns: 1fr; } }
