@@ -1,0 +1,31 @@
+.cross-reference-link {
+  margin: 4px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .12s ease, box-shadow .12s ease;
+}
+
+.cross-reference-link:hover,
+.cross-reference-link:focus-visible {
+  background: #f3f9fc;
+  box-shadow: 0 0 0 2px rgba(42, 111, 151, .16);
+  outline: none;
+}
+
+.cross-reference-link strong {
+  color: #0d567f;
+}
+
+.cross-reference-target {
+  border-color: #2a6f97 !important;
+  box-shadow: 0 0 0 3px rgba(42, 111, 151, .18), 0 8px 22px rgba(15, 43, 60, .10) !important;
+  background: #f3f9fc !important;
+  transition: box-shadow .18s ease, background .18s ease, border-color .18s ease;
+}
+
+.cross-reference-back {
+  display: block;
+  margin: 0 0 18px;
+  padding: 0;
+}
