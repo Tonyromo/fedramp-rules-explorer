@@ -1,13 +1,6 @@
-import { loadDataset } from './data/load'
-import type { NormalizedDataset } from './data/types'
+import { getSuggestedEvidence } from './data/suggestedEvidence'
 
 const READY = 'data-control-tabs-ready'
-let datasetPromise: Promise<NormalizedDataset> | null = null
-
-function getDataset(): Promise<NormalizedDataset> {
-  if (!datasetPromise) datasetPromise = loadDataset().then((result) => result.data)
-  return datasetPromise
-}
 
 function sectionByTitle(detail: HTMLElement, title: string): HTMLElement | undefined {
   return Array.from(detail.querySelectorAll<HTMLElement>(':scope > .detail-section'))
@@ -35,73 +28,38 @@ function addTabBehaviour(container: HTMLElement): void {
   })
 }
 
-function buildEvidencePanel(panel: HTMLElement, controlId: string, data: NormalizedDataset): void {
-  const evidence = new Map<string, Set<string>>()
-
-  data.rules
-    .filter((rule) => rule.controls.includes(controlId))
-    .forEach((rule) => {
-      rule.artifacts.forEach((artifact) => {
-        const value = artifact.trim()
-        if (!value) return
-        const basis = evidence.get(value) ?? new Set<string>()
-        basis.add(`Rule ${rule.id}`)
-        evidence.set(value, basis)
-      })
-    })
-
-  data.indicators
-    .filter((indicator) => indicator.controls.includes(controlId))
-    .forEach((indicator) => {
-      indicator.artifacts.forEach((artifact) => {
-        const value = artifact.trim()
-        if (!value) return
-        const basis = evidence.get(value) ?? new Set<string>()
-        basis.add(`Indicator ${indicator.id}`)
-        evidence.set(value, basis)
-      })
-    })
-
+function buildEvidencePanel(panel: HTMLElement, controlId: string): void {
+  const evidence = getSuggestedEvidence(controlId)
   panel.replaceChildren()
 
   const intro = document.createElement('div')
   intro.className = 'suggested-evidence-intro'
-  intro.innerHTML = '<strong>Non-authoritative guidance</strong><p>These suggestions are derived from artifact references in the official FedRAMP rules and indicators associated with this control. Each organization should determine the evidence appropriate to its implementation and assessment.</p>'
+  intro.innerHTML = '<strong>Suggested Evidence — non-authoritative</strong><p>This is a practical working aid derived from the control intent and common assessor evidence patterns. It is not an official FedRAMP evidence requirement. Each organization should determine the evidence appropriate to its implementation and assessment.</p>'
   panel.append(intro)
-
-  if (evidence.size === 0) {
-    const empty = document.createElement('p')
-    empty.className = 'suggested-evidence-empty'
-    empty.textContent = 'No evidence suggestions could be derived from the current FedRAMP dataset for this control.'
-    panel.append(empty)
-    return
-  }
 
   const table = document.createElement('div')
   table.className = 'suggested-evidence-table'
   table.innerHTML = '<div class="suggested-evidence-header"><span>Suggested evidence</span><span>Basis</span></div>'
 
-  Array.from(evidence.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .forEach(([artifact, basis]) => {
-      const row = document.createElement('div')
-      row.className = 'suggested-evidence-row'
+  evidence.forEach((item) => {
+    const row = document.createElement('div')
+    row.className = 'suggested-evidence-row'
 
-      const evidenceCell = document.createElement('span')
-      evidenceCell.textContent = artifact
+    const evidenceCell = document.createElement('span')
+    evidenceCell.textContent = item.evidence
 
-      const basisCell = document.createElement('span')
-      basisCell.className = 'suggested-evidence-basis'
-      basisCell.textContent = Array.from(basis).sort().join(' · ')
+    const basisCell = document.createElement('span')
+    basisCell.className = 'suggested-evidence-basis'
+    basisCell.textContent = item.basis
 
-      row.append(evidenceCell, basisCell)
-      table.append(row)
-    })
+    row.append(evidenceCell, basisCell)
+    table.append(row)
+  })
 
   panel.append(table)
 }
 
-async function enhanceControlDetail(detail: HTMLElement): Promise<void> {
+function enhanceControlDetail(detail: HTMLElement): void {
   if (detail.hasAttribute(READY)) return
 
   const summary = detail.querySelector<HTMLElement>(':scope > .relationship-summary')
@@ -123,7 +81,7 @@ async function enhanceControlDetail(detail: HTMLElement): Promise<void> {
       <button class="relationship-tab" type="button" role="tab" aria-selected="false" aria-controls="processes-panel">Processes</button>
     </div>
     <div class="relationship-tab-content">
-      <div class="relationship-tab-panel active" role="tabpanel" id="suggested-evidence-panel"><p class="suggested-evidence-loading">Deriving suggestions from the validated FedRAMP dataset…</p></div>
+      <div class="relationship-tab-panel active" role="tabpanel" id="suggested-evidence-panel"></div>
       <div class="relationship-tab-panel" role="tabpanel" id="referenced-indicators-panel" hidden></div>
       <div class="relationship-tab-panel" role="tabpanel" id="referenced-rules-panel" hidden></div>
       <div class="relationship-tab-panel" role="tabpanel" id="processes-panel" hidden></div>
@@ -137,20 +95,12 @@ async function enhanceControlDetail(detail: HTMLElement): Promise<void> {
   addTabBehaviour(tabs)
 
   const evidencePanel = tabs.querySelector<HTMLElement>('#suggested-evidence-panel')
-  if (!evidencePanel) return
-
-  try {
-    const data = await getDataset()
-    if (!detail.isConnected) return
-    buildEvidencePanel(evidencePanel, controlId, data)
-  } catch {
-    evidencePanel.innerHTML = '<p class="suggested-evidence-empty">Suggested evidence could not be derived from the current validated dataset.</p>'
-  }
+  if (evidencePanel) buildEvidencePanel(evidencePanel, controlId)
 }
 
 function enhance(): void {
   document.querySelectorAll<HTMLElement>('.detail-page').forEach((detail) => {
-    void enhanceControlDetail(detail)
+    enhanceControlDetail(detail)
   })
 }
 
