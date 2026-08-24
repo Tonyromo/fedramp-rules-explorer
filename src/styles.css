@@ -87,7 +87,9 @@ h2 { margin-bottom: 10px; font-size: clamp(1.35rem, 2vw, 1.8rem); }
 .rule-card-top { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .rule-card-top code { font-weight: 800; color: #244a61; }
 .rule-card p { margin: 11px 0 13px; color: #4f626f; line-height: 1.55; }
-.rule-tags, .chip-list { display: flex; flex-wrap: wrap; gap: 7px; }
+.rule-tags, .chip-list { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+.rule-tags { margin-top: 2px; }
+.rule-tags > span { display: inline-flex; align-items: center; min-height: 26px; line-height: 1; white-space: nowrap; }
 .rule-tags span, .chip-list span { padding: 5px 8px; border-radius: 7px; background: #eef3f5; color: #49616f; font-size: .72rem; font-weight: 700; }
 .force-badge { display: inline-flex; padding: 5px 9px; border-radius: 999px; background: #e6f0f7; color: #245b7b; font-size: .68rem; font-weight: 850; letter-spacing: .04em; }
 .force-badge.large { padding: 7px 12px; font-size: .78rem; }
