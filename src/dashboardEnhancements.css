@@ -22,6 +22,10 @@
 .ksi-theme-indicators button:hover { background: #f7fafc; }
 .ksi-theme-indicators code { font-weight: 700; color: #0d567f; }
 
+.referenced-indicator-link { cursor: pointer; border-radius: 8px; transition: background .12s ease, box-shadow .12s ease; }
+.referenced-indicator-link:hover, .referenced-indicator-link:focus-visible { background: #f3f9fc; box-shadow: 0 0 0 2px rgba(42, 111, 151, .16); outline: none; }
+.control-origin-back { margin-bottom: 18px; }
+
 .indicator-navigation-target {
   border-color: #2a6f97 !important;
   box-shadow: 0 0 0 3px rgba(42, 111, 151, .18), 0 8px 22px rgba(15, 43, 60, .10) !important;
