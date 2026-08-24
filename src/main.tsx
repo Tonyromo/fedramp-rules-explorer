@@ -8,6 +8,7 @@ import './milestone4.css'
 import './clarity.css'
 import './ruleDetailClarity.css'
 import './controlTabs.css'
+import './dashboardEnhancements.css'
 import App from './App'
 import { installMilestone4Enhancements } from './milestone4'
 import { installControlClarity } from './controlClarity'
@@ -15,6 +16,7 @@ import { installContentClarity } from './contentClarity'
 import { installRuleDetailClarity } from './ruleDetailClarity'
 import { installControlTabClarity } from './controlTabClarity'
 import { installControlTabs } from './controlTabs'
+import { installDashboardEnhancements } from './dashboardEnhancements'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -28,3 +30,4 @@ installControlClarity()
 installContentClarity()
 installRuleDetailClarity()
 installControlTabClarity()
+installDashboardEnhancements()
