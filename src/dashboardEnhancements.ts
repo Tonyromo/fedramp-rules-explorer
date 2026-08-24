@@ -3,6 +3,7 @@ import { loadDataset } from './data/load'
 const READY = 'data-dashboard-enhancements-ready'
 const NAV_READY = 'data-ksi-nav-ready'
 const INDICATOR_HIGHLIGHT_CLASS = 'indicator-navigation-target'
+const CONTROL_ORIGIN_KEY = 'frx-control-origin'
 
 function closeThemes(): void {
   document.querySelector('.ksi-themes-page')?.remove()
@@ -14,6 +15,28 @@ function clickNav(label: string): void {
   const button = Array.from(document.querySelectorAll<HTMLButtonElement>('.sidebar nav button'))
     .find((item) => item.textContent?.trim().startsWith(label))
   button?.click()
+}
+
+function goBackToControl(controlId: string): void {
+  closeThemes()
+  const controlsNav = Array.from(document.querySelectorAll<HTMLButtonElement>('.sidebar nav button'))
+    .find((item) => item.textContent?.trim() === 'Controls')
+  controlsNav?.click()
+
+  let attempts = 0
+  const locate = () => {
+    attempts += 1
+    const cards = Array.from(document.querySelectorAll<HTMLButtonElement>('.control-card'))
+    const card = cards.find((item) => item.querySelector('code')?.textContent?.trim() === controlId)
+    if (!card && attempts < 30) {
+      window.setTimeout(locate, 50)
+      return
+    }
+    if (!card) return
+    sessionStorage.removeItem(CONTROL_ORIGIN_KEY)
+    card.click()
+  }
+  window.setTimeout(locate, 0)
 }
 
 function openIndicator(id: string): void {
@@ -81,7 +104,7 @@ function enhanceDashboardTiles(): void {
   })
 }
 
-async function showThemes(): Promise<void> {
+async function showThemes(highlightIndicatorId?: string, originControlId?: string): Promise<void> {
   closeThemes()
 
   const main = document.querySelector<HTMLElement>('.main-content')
@@ -101,9 +124,26 @@ async function showThemes(): Promise<void> {
 
   const page = document.createElement('section')
   page.className = 'panel ksi-themes-page'
-  page.innerHTML = `<div class="section-heading"><div><span class="eyebrow">Browse</span><h2>${themes.size} KSI themes</h2></div></div><div class="ksi-theme-list"></div>`
-  const list = page.querySelector<HTMLElement>('.ksi-theme-list')!
 
+  if (originControlId) {
+    const back = document.createElement('button')
+    back.type = 'button'
+    back.className = 'back-button control-origin-back'
+    back.textContent = `Back to ${originControlId}`
+    back.addEventListener('click', () => goBackToControl(originControlId))
+    page.append(back)
+  }
+
+  const headingBlock = document.createElement('div')
+  headingBlock.className = 'section-heading'
+  headingBlock.innerHTML = `<div><span class="eyebrow">Browse</span><h2>${themes.size} KSI themes</h2></div>`
+  page.append(headingBlock)
+
+  const list = document.createElement('div')
+  list.className = 'ksi-theme-list'
+  page.append(list)
+
+  let targetRow: HTMLButtonElement | null = null
   Array.from(themes.entries()).sort((a, b) => a[0].localeCompare(b[0])).forEach(([id, theme]) => {
     const article = document.createElement('article')
     article.className = 'ksi-theme-card'
@@ -119,6 +159,7 @@ async function showThemes(): Promise<void> {
       row.type = 'button'
       row.innerHTML = `<code>${indicator.id}</code><span>${indicator.statement}</span>`
       row.addEventListener('click', () => openIndicator(indicator.id))
+      if (indicator.id === highlightIndicatorId) targetRow = row
       indicators.append(row)
     })
 
@@ -128,6 +169,35 @@ async function showThemes(): Promise<void> {
 
   main.classList.add('ksi-themes-mode')
   main.append(page)
+
+  if (targetRow) {
+    targetRow.classList.add(INDICATOR_HIGHLIGHT_CLASS)
+    targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    window.setTimeout(() => targetRow?.classList.remove(INDICATOR_HIGHLIGHT_CLASS), 2600)
+  }
+}
+
+function enhanceControlOriginBack(): void {
+  const controlId = sessionStorage.getItem(CONTROL_ORIGIN_KEY)
+  if (!controlId || document.querySelector('.ksi-themes-page')) return
+
+  const detail = document.querySelector<HTMLElement>('.detail-page')
+  if (!detail) return
+  const currentId = detail.querySelector('.detail-header h2')?.textContent?.trim()
+  if (!currentId || currentId === controlId) return
+
+  const actions = detail.querySelector<HTMLElement>('.detail-actions')
+  if (!actions || actions.querySelector('.control-origin-back')) return
+
+  const nativeBack = actions.querySelector<HTMLButtonElement>('.back-button')
+  if (nativeBack) nativeBack.style.display = 'none'
+
+  const back = document.createElement('button')
+  back.type = 'button'
+  back.className = 'back-button control-origin-back'
+  back.textContent = `Back to ${controlId}`
+  back.addEventListener('click', () => goBackToControl(controlId))
+  actions.prepend(back)
 }
 
 function addThemesNav(): void {
@@ -140,6 +210,7 @@ function addThemesNav(): void {
       const button = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('button') : null
       if (!button || button.dataset.ksiThemesNav === 'true') return
       closeThemes()
+      sessionStorage.removeItem(CONTROL_ORIGIN_KEY)
     }, true)
   }
 
@@ -152,16 +223,23 @@ function addThemesNav(): void {
   button.type = 'button'
   button.textContent = 'KSI Themes'
   button.dataset.ksiThemesNav = 'true'
-  button.addEventListener('click', () => { void showThemes() })
+  button.addEventListener('click', () => { sessionStorage.removeItem(CONTROL_ORIGIN_KEY); void showThemes() })
   indicators.insertAdjacentElement('afterend', button)
 }
 
 function enhance(): void {
   addThemesNav()
   enhanceDashboardTiles()
+  enhanceControlOriginBack()
 }
 
 export function installDashboardEnhancements(): void {
   enhance()
+  document.addEventListener('frx-open-ksi-theme-indicator', (event) => {
+    const detail = (event as CustomEvent<{ indicatorId?: string; controlId?: string }>).detail
+    if (!detail?.indicatorId) return
+    if (detail.controlId) sessionStorage.setItem(CONTROL_ORIGIN_KEY, detail.controlId)
+    void showThemes(detail.indicatorId, detail.controlId)
+  })
   new MutationObserver(enhance).observe(document.body, { childList: true, subtree: true })
 }
