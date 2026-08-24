@@ -2,6 +2,7 @@ import { loadDataset } from './data/load'
 
 const DEFINITION_READY = 'data-cross-reference-ready'
 const RELATED_READY = 'data-related-rule-cross-reference-ready'
+const KSI_READY = 'data-rule-ksi-cross-reference-ready'
 const HIGHLIGHT = 'indicator-navigation-target'
 const ORIGIN_KEY = 'frx-cross-reference-origin-rule'
 const TARGET_DEFINITION_KEY = 'frx-cross-reference-target-definition'
@@ -56,6 +57,7 @@ function clearRelatedRuleState(): void {
 }
 
 function returnToRule(ruleId: string): void {
+  setGlobalSearch('')
   clearDefinitionCrossReferenceState()
   clearRelatedRuleState()
   navButton('Rules')?.click()
@@ -202,6 +204,13 @@ function openRelatedRule(targetRuleId: string, originRuleId: string): void {
   locateAndOpenRule(targetRuleId, originRuleId)
 }
 
+function openKsiIndicator(indicatorId: string, ruleId: string): void {
+  setGlobalSearch('')
+  document.dispatchEvent(new CustomEvent('frx-open-ksi-theme-indicator', {
+    detail: { indicatorId, ruleId },
+  }))
+}
+
 async function enhanceRuleDefinitions(detail: HTMLElement): Promise<void> {
   if (detail.hasAttribute(DEFINITION_READY)) return
   const ruleId = currentRuleId(detail)
@@ -281,6 +290,58 @@ async function enhanceRelatedRules(detail: HTMLElement): Promise<void> {
   else detail.append(section)
 }
 
+async function enhanceRuleKsiIndicators(detail: HTMLElement): Promise<void> {
+  if (detail.hasAttribute(KSI_READY)) return
+  const ruleId = currentRuleId(detail)
+  if (!ruleId) return
+  detail.setAttribute(KSI_READY, 'true')
+
+  const { data } = await loadDataset()
+  const rule = data.rules.find((candidate) => candidate.id === ruleId)
+  if (!rule?.controls.length) return
+
+  const ruleControls = new Set(rule.controls.map((control) => control.toLowerCase()))
+  const related = data.indicators
+    .map((indicator) => ({
+      indicator,
+      sharedControls: indicator.controls.filter((control) => ruleControls.has(control.toLowerCase())),
+    }))
+    .filter((entry) => entry.sharedControls.length > 0)
+    .sort((a, b) => a.indicator.id.localeCompare(b.indicator.id))
+
+  if (!related.length) return
+
+  const section = document.createElement('section')
+  section.className = 'detail-section rule-ksi-section'
+
+  const heading = document.createElement('h3')
+  heading.textContent = 'Related KSI indicators'
+  section.append(heading)
+
+  const note = document.createElement('p')
+  note.className = 'relationship-note'
+  note.textContent = 'Derived from controls referenced by both this rule and the KSI indicator.'
+  section.append(note)
+
+  const list = document.createElement('div')
+  list.className = 'relationship-list related-rules-list'
+
+  related.forEach(({ indicator, sharedControls }) => {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.className = 'related-rule-link rule-ksi-link'
+    button.innerHTML = `<code>${indicator.id}</code><span>${indicator.statement || 'No statement supplied.'}</span><small>${indicator.themeId} · Shared control${sharedControls.length === 1 ? '' : 's'}: ${sharedControls.join(', ')}</small>`
+    button.addEventListener('click', () => openKsiIndicator(indicator.id, ruleId))
+    list.append(button)
+  })
+
+  section.append(list)
+  const sourceSection = Array.from(detail.querySelectorAll<HTMLElement>('.detail-section'))
+    .find((candidate) => candidate.querySelector('h3')?.textContent?.trim() === 'Source information')
+  if (sourceSection) sourceSection.before(section)
+  else detail.append(section)
+}
+
 function installNavigationCleanup(): void {
   const nav = document.querySelector<HTMLElement>('.sidebar nav')
   if (!nav || nav.hasAttribute(NAV_READY)) return
@@ -312,6 +373,7 @@ function enhance(): void {
   if (detail) {
     void enhanceRuleDefinitions(detail)
     void enhanceRelatedRules(detail)
+    void enhanceRuleKsiIndicators(detail)
 
     const currentId = currentRuleId(detail)
     const relatedOrigin = sessionStorage.getItem(RELATED_ORIGIN_KEY)
@@ -330,5 +392,9 @@ function enhance(): void {
 
 export function installCrossReferenceNavigation(): void {
   enhance()
+  document.addEventListener('frx-return-to-rule', (event) => {
+    const ruleId = (event as CustomEvent<{ ruleId?: string }>).detail?.ruleId
+    if (ruleId) returnToRule(ruleId)
+  })
   new MutationObserver(enhance).observe(document.body, { childList: true, subtree: true })
 }
