@@ -143,7 +143,6 @@ async function showThemes(highlightIndicatorId?: string, originControlId?: strin
   list.className = 'ksi-theme-list'
   page.append(list)
 
-  let targetRow: HTMLButtonElement | null = null
   Array.from(themes.entries()).sort((a, b) => a[0].localeCompare(b[0])).forEach(([id, theme]) => {
     const article = document.createElement('article')
     article.className = 'ksi-theme-card'
@@ -157,9 +156,9 @@ async function showThemes(highlightIndicatorId?: string, originControlId?: strin
     theme.indicators.sort((a, b) => a.id.localeCompare(b.id)).forEach((indicator) => {
       const row = document.createElement('button')
       row.type = 'button'
+      row.dataset.indicatorId = indicator.id
       row.innerHTML = `<code>${indicator.id}</code><span>${indicator.statement}</span>`
       row.addEventListener('click', () => openIndicator(indicator.id))
-      if (indicator.id === highlightIndicatorId) targetRow = row
       indicators.append(row)
     })
 
@@ -170,10 +169,14 @@ async function showThemes(highlightIndicatorId?: string, originControlId?: strin
   main.classList.add('ksi-themes-mode')
   main.append(page)
 
-  if (targetRow) {
-    targetRow.classList.add(INDICATOR_HIGHLIGHT_CLASS)
-    targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    window.setTimeout(() => targetRow?.classList.remove(INDICATOR_HIGHLIGHT_CLASS), 2600)
+  if (highlightIndicatorId) {
+    const targetRow = Array.from(page.querySelectorAll<HTMLButtonElement>('.ksi-theme-indicators button'))
+      .find((row) => row.dataset.indicatorId === highlightIndicatorId)
+    if (targetRow) {
+      targetRow.classList.add(INDICATOR_HIGHLIGHT_CLASS)
+      targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      window.setTimeout(() => targetRow.classList.remove(INDICATOR_HIGHLIGHT_CLASS), 2600)
+    }
   }
 }
 
