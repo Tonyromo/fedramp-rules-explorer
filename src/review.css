@@ -18,6 +18,10 @@
   background: #fafcfd;
 }
 
+.rule-card > .rule-tags {
+  margin: 0 17px 10px;
+}
+
 .review-button,
 .primary-button {
   border: 1px solid #8aa9ba;
