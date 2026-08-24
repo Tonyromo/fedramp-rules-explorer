@@ -2,6 +2,15 @@ import { loadDataset } from './data/load'
 
 const READY = 'data-dashboard-enhancements-ready'
 const NAV_READY = 'data-ksi-nav-cleanup-ready'
+const INDICATOR_HIGHLIGHT_CLASS = 'indicator-navigation-target'
+
+function clearSearch(): void {
+  const search = document.querySelector<HTMLInputElement>('.search-box input')
+  if (!search || !search.value) return
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+  setter?.call(search, '')
+  search.dispatchEvent(new Event('input', { bubbles: true }))
+}
 
 function restoreThemesPage(): void {
   document.querySelector('.ksi-themes-page')?.remove()
@@ -18,9 +27,33 @@ function restoreThemesPage(): void {
 }
 
 function clickNav(label: string): void {
+  clearSearch()
   const button = Array.from(document.querySelectorAll<HTMLButtonElement>('.sidebar nav button'))
     .find((item) => item.textContent?.trim().startsWith(label))
   button?.click()
+}
+
+function focusIndicator(id: string): void {
+  let attempts = 0
+  const locate = () => {
+    attempts += 1
+    const cards = Array.from(document.querySelectorAll<HTMLElement>('.record-card'))
+    const card = cards.find((item) => item.querySelector('code')?.textContent?.trim() === id)
+
+    if (!card && attempts < 20) {
+      window.setTimeout(locate, 50)
+      return
+    }
+
+    if (!card) return
+
+    document.querySelectorAll(`.${INDICATOR_HIGHLIGHT_CLASS}`).forEach((item) => item.classList.remove(INDICATOR_HIGHLIGHT_CLASS))
+    card.classList.add(INDICATOR_HIGHLIGHT_CLASS)
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    window.setTimeout(() => card.classList.remove(INDICATOR_HIGHLIGHT_CLASS), 2600)
+  }
+
+  window.setTimeout(locate, 0)
 }
 
 function enhanceDashboardTiles(): void {
@@ -66,6 +99,7 @@ function enhanceDashboardTiles(): void {
 
 async function showThemes(): Promise<void> {
   restoreThemesPage()
+  clearSearch()
 
   const main = document.querySelector<HTMLElement>('.main-content')
   if (!main) return
@@ -113,13 +147,7 @@ async function showThemes(): Promise<void> {
       row.addEventListener('click', () => {
         restoreThemesPage()
         clickNav('Indicators')
-        setTimeout(() => {
-          const search = document.querySelector<HTMLInputElement>('.search-box input')
-          if (!search) return
-          const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
-          setter?.call(search, indicator.id)
-          search.dispatchEvent(new Event('input', { bubbles: true }))
-        }, 0)
+        focusIndicator(indicator.id)
       })
       indicators.append(row)
     })
@@ -138,7 +166,10 @@ function addThemesNav(): void {
   nav.querySelectorAll<HTMLButtonElement>('button').forEach((button) => {
     if (button.hasAttribute(NAV_READY) || button.dataset.ksiThemesNav === 'true') return
     button.setAttribute(NAV_READY, 'true')
-    button.addEventListener('click', () => restoreThemesPage(), { capture: true })
+    button.addEventListener('click', () => {
+      restoreThemesPage()
+      clearSearch()
+    }, { capture: true })
   })
 
   if (nav.querySelector('[data-ksi-themes-nav]')) return
