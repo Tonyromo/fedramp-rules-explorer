@@ -8,6 +8,7 @@ const CONTROL_ORIGIN_KEY = 'frx-control-origin'
 function closeThemes(): void {
   document.querySelector('.ksi-themes-page')?.remove()
   document.querySelector<HTMLElement>('.main-content')?.classList.remove('ksi-themes-mode')
+  document.querySelector<HTMLButtonElement>('.sidebar nav [data-ksi-themes-nav]')?.classList.remove('active')
 }
 
 function clickNav(label: string): void {
