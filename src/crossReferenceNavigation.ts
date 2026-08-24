@@ -3,6 +3,7 @@ import { loadDataset } from './data/load'
 const READY = 'data-cross-reference-ready'
 const HIGHLIGHT = 'indicator-navigation-target'
 const ORIGIN_KEY = 'frx-cross-reference-origin-rule'
+const TARGET_DEFINITION_KEY = 'frx-cross-reference-target-definition'
 
 function navButton(label: string): HTMLButtonElement | undefined {
   return Array.from(document.querySelectorAll<HTMLButtonElement>('.sidebar nav button'))
@@ -20,6 +21,7 @@ function currentRuleId(detail: HTMLElement): string | undefined {
 
 function returnToRule(ruleId: string): void {
   sessionStorage.removeItem(ORIGIN_KEY)
+  sessionStorage.removeItem(TARGET_DEFINITION_KEY)
   navButton('Rules')?.click()
 
   let attempts = 0
@@ -65,17 +67,15 @@ function highlightListItem(card: HTMLElement): void {
   window.setTimeout(() => card.classList.remove(HIGHLIGHT), 2600)
 }
 
-function openDefinition(term: string, ruleId: string): void {
-  sessionStorage.setItem(ORIGIN_KEY, ruleId)
-  navButton('Definitions')?.click()
-
+function locateDefinition(definitionId: string, ruleId: string): void {
   let attempts = 0
   const locate = () => {
     attempts += 1
+    const definitionsActive = navButton('Definitions')?.classList.contains('active')
     const card = Array.from(document.querySelectorAll<HTMLElement>('.record-card'))
-      .find((item) => item.querySelector('h3')?.textContent?.trim().toLowerCase() === term.toLowerCase())
+      .find((item) => item.querySelector('.record-header code')?.textContent?.trim() === definitionId)
 
-    if (!card && attempts < 30) {
+    if ((!definitionsActive || !card) && attempts < 40) {
       window.setTimeout(locate, 50)
       return
     }
@@ -83,8 +83,16 @@ function openDefinition(term: string, ruleId: string): void {
 
     highlightListItem(card)
     addOriginBackButton(ruleId)
+    sessionStorage.removeItem(TARGET_DEFINITION_KEY)
   }
   window.setTimeout(locate, 0)
+}
+
+function openDefinition(definitionId: string, ruleId: string): void {
+  sessionStorage.setItem(ORIGIN_KEY, ruleId)
+  sessionStorage.setItem(TARGET_DEFINITION_KEY, definitionId)
+  navButton('Definitions')?.click()
+  locateDefinition(definitionId, ruleId)
 }
 
 async function enhanceRuleDefinitions(detail: HTMLElement): Promise<void> {
@@ -102,13 +110,16 @@ async function enhanceRuleDefinitions(detail: HTMLElement): Promise<void> {
 
   section.querySelectorAll<HTMLLIElement>('li').forEach((item) => {
     const term = item.querySelector('strong')?.textContent?.trim()
-    if (!term || !data.definitions.some((definition) => definition.term.toLowerCase() === term.toLowerCase())) return
+    if (!term) return
+
+    const definition = data.definitions.find((candidate) => candidate.term.toLowerCase() === term.toLowerCase())
+    if (!definition) return
 
     item.classList.add('cross-reference-link')
     item.setAttribute('role', 'button')
     item.setAttribute('tabindex', '0')
     item.setAttribute('aria-label', `Open definition ${term}`)
-    const open = () => openDefinition(term, ruleId)
+    const open = () => openDefinition(definition.id, ruleId)
     item.addEventListener('click', open)
     item.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' || event.key === ' ') {
@@ -124,8 +135,12 @@ function enhance(): void {
   if (detail) void enhanceRuleDefinitions(detail)
 
   const origin = sessionStorage.getItem(ORIGIN_KEY)
+  const targetDefinition = sessionStorage.getItem(TARGET_DEFINITION_KEY)
   const definitionsActive = navButton('Definitions')?.classList.contains('active')
-  if (origin && definitionsActive && !document.querySelector('.detail-page')) addOriginBackButton(origin)
+  if (origin && definitionsActive && !document.querySelector('.detail-page')) {
+    addOriginBackButton(origin)
+    if (targetDefinition) locateDefinition(targetDefinition, origin)
+  }
 }
 
 export function installCrossReferenceNavigation(): void {
