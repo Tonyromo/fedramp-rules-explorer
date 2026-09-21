@@ -10,6 +10,7 @@ import './ruleDetailClarity.css'
 import './controlTabs.css'
 import './dashboardEnhancements.css'
 import './crossReferenceNavigation.css'
+import './relationshipViewer.css'
 import App from './App'
 import { installMilestone4Enhancements } from './milestone4'
 import { installControlClarity } from './controlClarity'
@@ -19,6 +20,7 @@ import { installControlTabClarity } from './controlTabClarity'
 import { installControlTabs } from './controlTabs'
 import { installDashboardEnhancements } from './dashboardEnhancements'
 import { installCrossReferenceNavigation } from './crossReferenceNavigation'
+import { installRelationshipViewer } from './relationshipViewer'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -34,3 +36,4 @@ installRuleDetailClarity()
 installControlTabClarity()
 installDashboardEnhancements()
 installCrossReferenceNavigation()
+installRelationshipViewer()
